@@ -1,0 +1,17 @@
+
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Secret API keys
+.env
+
+# Local database and backups
+database.db
+database_backup.db
+
+# Local transaction data
+TransactionList.csv
