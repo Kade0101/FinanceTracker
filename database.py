@@ -1,4 +1,4 @@
-from multiprocessing.dummy import connection
+from datetime import datetime
 import sqlite3
 
 
@@ -59,7 +59,18 @@ def create_tables():
     connection.close()
 
 
+def normalise_date(date_text):
+    date_text = date_text.strip()
 
+    for date_format in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(
+                date_text, date_format
+            ).date().isoformat()
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unsupported date format: {date_text!r}")
 
 def populate_transactions(transactions):
     connection = sqlite3.connect("database.db")
@@ -72,7 +83,7 @@ def populate_transactions(transactions):
                      vendor, cleaned_description, category)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                row["Date"],
+                normalise_date(row["Date"]),
                 row["Description"],
                 float(row["Credit"] or 0),
                 float(row["Debit"] or 0),
@@ -105,7 +116,7 @@ def update_transaction_details(transactions):
             """, (
                 row["Vendor"],
                 row["Cleaned_Description"],
-                row["Date"],
+                normalise_date(row["Date"]),
                 row["Description"],
                 float(row["Credit"] or 0),
                 float(row["Debit"] or 0),
@@ -139,14 +150,24 @@ def cache_vendor(vendor_name, category):
     connection.close()
 print("Database created successfully!")
 
-def retrieve_description():
+def retrieve_description(start_date=None):
     connection = sqlite3.connect("database.db")
-    cursor = connection.execute("""
-        SELECT description
-        FROM TransactionList
-    """)
+    print(f"Retrieving descriptions from {start_date}")
+    if not start_date:
+        cursor = connection.execute("""
+            SELECT description
+            FROM TransactionList
+        """)
+    else:
+        cursor = connection.execute("""
+            SELECT description
+            FROM TransactionList
+            WHERE date >= ?
+        """, (start_date,))
+
     results = cursor.fetchall()
     connection.close()
+
     return [row[0] for row in results]
 
 def update_transaction_category(description, category):
@@ -169,7 +190,7 @@ def retrieve_transactions():
 
     try:
         cursor = connection.execute("""
-            SELECT category, credit, debit
+            SELECT category, credit, debit, date
             FROM TransactionList
             WHERE category IS NOT NULL
         """)
@@ -178,7 +199,8 @@ def retrieve_transactions():
             {
                 "category": row[0],
                 "credit": row[1] or 0,
-                "debit": row[2] or 0
+                "debit": row[2] or 0,
+                "date": row[3]
             }
             for row in cursor.fetchall()
         ]

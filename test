@@ -1,0 +1,65 @@
+
+import sqlite3
+from datetime import datetime
+
+connection = sqlite3.connect("database.db")
+cursor = connection.cursor()
+
+try:
+    cursor.execute("BEGIN")
+
+    cursor.execute("""
+        SELECT rowid, date, description, credit, debit, balance
+        FROM TransactionList
+        WHERE date IS NOT NULL
+    """)
+
+    rows = cursor.fetchall()
+
+    # Build a set of transactions already stored with ISO dates.
+    iso_transactions = set()
+
+    for rowid, date_text, description, credit, debit, balance in rows:
+        date_text = date_text.strip()
+
+        if "-" in date_text:
+            iso_transactions.add(
+                (date_text, description, credit, debit, balance)
+            )
+
+    # Delete slash-format rows only when an ISO equivalent exists.
+    rows_to_delete = []
+
+    for rowid, date_text, description, credit, debit, balance in rows:
+        date_text = date_text.strip()
+
+        if "/" in date_text:
+            iso_date = datetime.strptime(
+                date_text, "%d/%m/%Y"
+            ).date().isoformat()
+
+            transaction = (
+                iso_date, description, credit, debit, balance
+            )
+
+            if transaction in iso_transactions:
+                rows_to_delete.append((rowid,))
+
+    cursor.executemany(
+        "DELETE FROM TransactionList WHERE rowid = ?",
+        rows_to_delete
+    )
+
+    connection.commit()
+
+    print(f"Deleted {len(rows_to_delete)} duplicate rows.")
+
+    cursor.execute("SELECT COUNT(*) FROM TransactionList")
+    print("Remaining transactions:", cursor.fetchone()[0])
+
+except Exception:
+    connection.rollback()
+    raise
+
+finally:
+    connection.close()

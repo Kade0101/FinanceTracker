@@ -17,6 +17,7 @@ CATEGORIES = [
     "Income",
     "Restaurant Dining",
     "Fast Food",
+    "Transfer",
     "Other"
 ]
 
@@ -38,7 +39,9 @@ def categorise_transaction(description):
                 )
             }
         ]
+    
     )
+    print("Categorising transaction with API")
 
     category = response.content[0].text.strip()
 
