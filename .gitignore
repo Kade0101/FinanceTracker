@@ -20,3 +20,8 @@ TransactionList.csv
 tempCodeRunnerFile.py
 onetimefix.py
 test.py
+
+# local vendor and unknown vendor files
+vendor_aliases.json
+unknown_vendors.json
+known_payees.json
