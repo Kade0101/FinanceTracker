@@ -1,28 +1,29 @@
+
 # Python virtual environment
 .venv/
 
 # Python cache files
 __pycache__/
 *.py[cod]
+.vscode/
 
 # Secret API keys
 .env
 
 # Local database and backups
 database.db
-database_backup.db
-database backup.db
 database copy.db
+database backup.db
 
 # Local transaction data
 TransactionList.csv
 
-# Temp files
+# Temp file
 tempCodeRunnerFile.py
 onetimefix.py
 test.py
 
-# Local vendor data
+# local vendor and unknown vendor files
 vendor_aliases.json
 unknown_vendors.json
 known_payees.json

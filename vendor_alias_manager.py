@@ -6,17 +6,17 @@ from difflib import get_close_matches
 JSON_PATH = Path(__file__).parent / "vendor_aliases.json"
 
 
-def load_vendor_aliases():
+def load_vendor_aliases(): # Load the vendor aliases from the JSON file
     with open(JSON_PATH, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
-def save_vendor_aliases(aliases):
+def save_vendor_aliases(aliases): # Save the vendor aliases to the JSON file
     with open(JSON_PATH, "w", encoding="utf-8") as file:
         json.dump(aliases, file, indent=4, ensure_ascii=False)
 
 
-def get_vendor_canonical(vendor):
+def get_vendor_canonical(vendor): # Get the canonical name for a given vendor, if it exists
     aliases = load_vendor_aliases()
     vendor_lower = vendor.casefold().strip()
 
@@ -31,7 +31,7 @@ def get_vendor_canonical(vendor):
     return None
 
 
-def find_similar_canonical(vendor, aliases=None):
+def find_similar_canonical(vendor, aliases=None): # Find similar canonical names for a given vendor using difflib's get_close_matches
     if aliases is None:
         aliases = load_vendor_aliases()
 
@@ -43,8 +43,6 @@ def find_similar_canonical(vendor, aliases=None):
         n=3,
         cutoff=0.6
     )
-
-
 
 def add_vendor(canonical_name, alias_list):
     aliases = load_vendor_aliases()

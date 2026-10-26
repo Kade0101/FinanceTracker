@@ -12,21 +12,33 @@ from database import (
     normalise_date
 )
 from csv_import import clean_description, import_transactions, normalise_vendor
-from sorting import sum_categories
+from sorting import sum_categories, top_vendors_by_category
 from ai import categorise_transaction, get_or_create_vendor
 from vendor_alias_manager import get_vendor_canonical, extract_osko_payee, is_known_payee, save_known_payee
 from app_state import today, last_year, last_month
 import time
+import sys
+
 
 IGNORED_PAYMENT_METHODS = (
     "Osko Payment",
     "BPAY",
 )
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(
+        encoding="utf-8",
+        errors="backslashreplace"
+    )
 
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(
+        encoding="utf-8",
+        errors="backslashreplace"
+    )
 
+    
 def main():
     create_tables()
-
     # transactions = import_transactions()
     # populate_transactions(transactions)
     # update_transaction_details(transactions)
@@ -35,18 +47,20 @@ def main():
     print("Number of transactions:", len(transactions))
     print("First transaction:", transactions[0] if transactions else "List is empty")
 
-    category_sums = sum_categories(transactions, last_year)
+    category_sums = sum_categories(transactions)
     for category, total in category_sums.items():
         print(f"{category}: ${total:,.2f}")
 
-    assign_category_to_vendor(last_year)
+    assign_category_to_vendor()
 
     counter = 0
     for transaction in transactions:
         if not transaction.get("category"):
             print("Transaction missing category:", transaction)
             counter += 1
-
+    print("\nTop vendors by category:")
+    
+    top_vendors_by_category()
     print("Number of transactions missing category:", counter)
 
 
@@ -56,11 +70,11 @@ def assign_category_to_vendor(time_period=None):
 
     # Track total time spent in each operation.
     timings = {
-        "Vendor lookup": 0.0,
-        "AI vendor identification": 0.0,
-        "Category cache lookup": 0.0,
-        "AI categorisation": 0.0,
-        "Database update": 0.0,
+        "Vendor lookup": 0.0, # Time spent looking up vendors in the database
+        "AI vendor identification": 0.0, # Time spent identifying vendors using AI
+        "Category cache lookup": 0.0, # Time spent looking up categories in the cache
+        "AI categorisation": 0.0, # Time spent categorising transactions using AI
+        "Database update": 0.0, # Time spent updating the database with new categories
     }
 
     

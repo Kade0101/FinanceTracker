@@ -49,7 +49,7 @@ def categorise_transaction(description):
         ]
     
     )
-    print("Categorising transaction with API")
+    print("-----------Categorising transaction with API---------")
 
     category = response.content[0].text.strip()
 
@@ -111,7 +111,7 @@ def identify_vendor_with_ai(description):
             }
         ]
     )
-
+    print("-----------Parsing AI response---------")
     raw_response = response.content[0].text.strip()
 
     # Extract the first JSON object, ignoring text around it.
