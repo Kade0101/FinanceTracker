@@ -5,30 +5,52 @@ from difflib import get_close_matches
 
 JSON_PATH = Path(__file__).parent / "vendor_aliases.json"
 
+# In-memory caches so repeated lookups don't re-read the JSON files.
+_aliases_cache = None
+_canonical_lookup = None
+
 
 def load_vendor_aliases(): # Load the vendor aliases from the JSON file
-    with open(JSON_PATH, "r", encoding="utf-8") as file:
-        return json.load(file)
+    global _aliases_cache
+
+    if _aliases_cache is None:
+        with open(JSON_PATH, "r", encoding="utf-8") as file:
+            _aliases_cache = json.load(file)
+
+    return _aliases_cache
 
 
 def save_vendor_aliases(aliases): # Save the vendor aliases to the JSON file
+    global _aliases_cache, _canonical_lookup
+
     with open(JSON_PATH, "w", encoding="utf-8") as file:
         json.dump(aliases, file, indent=4, ensure_ascii=False)
 
+    _aliases_cache = aliases
+    _canonical_lookup = None
+
+
+def _get_canonical_lookup():
+    global _canonical_lookup
+
+    if _canonical_lookup is None:
+        _canonical_lookup = {}
+
+        for canonical_name, alias_list in load_vendor_aliases().items():
+            _canonical_lookup.setdefault(
+                canonical_name.casefold(), canonical_name
+            )
+
+            for alias in alias_list:
+                _canonical_lookup.setdefault(
+                    alias.casefold(), canonical_name
+                )
+
+    return _canonical_lookup
+
 
 def get_vendor_canonical(vendor): # Get the canonical name for a given vendor, if it exists
-    aliases = load_vendor_aliases()
-    vendor_lower = vendor.casefold().strip()
-
-    for canonical_name, alias_list in aliases.items():
-        if vendor_lower == canonical_name.casefold():
-            return canonical_name
-
-        for alias in alias_list:
-            if vendor_lower == alias.casefold():
-                return canonical_name
-
-    return None
+    return _get_canonical_lookup().get(vendor.casefold().strip())
 
 
 def find_similar_canonical(vendor, aliases=None): # Find similar canonical names for a given vendor using difflib's get_close_matches
@@ -112,10 +134,17 @@ def add_vendor(canonical_name, alias_list):
 
 PAYEES_PATH = Path(__file__).parent / "known_payees.json"
 
+_payees_cache = None
+
 
 def load_known_payees():
-    with open(PAYEES_PATH, "r", encoding="utf-8") as file:
-        return json.load(file)
+    global _payees_cache
+
+    if _payees_cache is None:
+        with open(PAYEES_PATH, "r", encoding="utf-8") as file:
+            _payees_cache = json.load(file)
+
+    return _payees_cache
 
 
 def is_known_payee(payee):
@@ -129,6 +158,8 @@ def is_known_payee(payee):
 
 
 def save_known_payee(payee):
+    global _payees_cache
+
     payee = payee.strip()
 
     if not payee:
@@ -147,6 +178,7 @@ def save_known_payee(payee):
     with open(PAYEES_PATH, "w", encoding="utf-8") as file:
         json.dump(payees, file, indent=4, ensure_ascii=False)
 
+    _payees_cache = payees
     print(f"Saved known payee: {payee}")
 
 

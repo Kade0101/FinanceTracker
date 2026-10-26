@@ -218,6 +218,53 @@ select:focus-visible {
   letter-spacing: 0.8px;
 }
 
+.process-button {
+  padding: 8px 14px;
+  border: 1px solid #2c3342;
+  border-radius: 8px;
+  color: #d6dbe7;
+  background: #141923;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.process-button:hover:not(:disabled) {
+  border-color: #91a7f6;
+  color: #c1ceff;
+}
+
+.process-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.process-result {
+  color: #62d5ad;
+  font-size: 11px;
+}
+
+.process-progress {
+  margin-bottom: 18px;
+}
+
+.process-progress-top {
+  display: flex;
+  justify-content: space-between;
+  color: #778195;
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+
+.process-progress .progress-fill {
+  transition: width 0.3s ease;
+}
+
+.error-message {
+  color: #f08e9c;
+  font-size: 11px;
+}
+
 .topbar-avatar {
   width: 31px;
   height: 31px;

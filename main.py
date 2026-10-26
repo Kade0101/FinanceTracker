@@ -64,9 +64,10 @@ def main():
     print("Number of transactions missing category:", counter)
 
 
-def assign_category_to_vendor(time_period=None):
+def assign_category_to_vendor(time_period=None, progress_callback=None):
     descriptions_list = retrieve_description(time_period)
     total = len(descriptions_list)
+    categorised = 0
 
     # Track total time spent in each operation.
     timings = {
@@ -80,6 +81,9 @@ def assign_category_to_vendor(time_period=None):
     
     for index, description in enumerate(descriptions_list, start=1):
 
+        if progress_callback:
+            progress_callback(index, total)
+
         original_description = description
         payee = extract_osko_payee(original_description)
 
@@ -88,6 +92,7 @@ def assign_category_to_vendor(time_period=None):
         # Handle internal transfers first.
         if "internal transfer" in description.casefold():
             update_transaction_category(description, "Transfer")
+            categorised += 1
             continue
 
         # Handle Osko payments using the ORIGINAL description.
@@ -99,11 +104,13 @@ def assign_category_to_vendor(time_period=None):
                 save_known_payee(payee)
 
             update_transaction_category(description, "Other")
+            categorised += 1
             continue
 
         # Check whether this exact description is a known payee.
         if is_known_payee(description):
             update_transaction_category(description, "Other")
+            categorised += 1
             continue
 
         vendor = normalise_vendor(description)
@@ -123,6 +130,7 @@ def assign_category_to_vendor(time_period=None):
             start = time.perf_counter()
             update_transaction_category(description, category)
             timings["Database update"] += time.perf_counter() - start
+            categorised += 1
 
         else:
             # Resolve the vendor using existing aliases.
@@ -166,6 +174,7 @@ def assign_category_to_vendor(time_period=None):
             start = time.perf_counter()
             update_transaction_category(description, category)
             timings["Database update"] += time.perf_counter() - start
+            categorised += 1
 
         percentage = (index / total) * 100 if total else 100
         remaining = total - index
@@ -184,6 +193,8 @@ def assign_category_to_vendor(time_period=None):
         print(f"{operation}: {elapsed:.2f} seconds")
 
     print("Categorisation complete!")
+
+    return categorised
 
 
 if __name__ == "__main__":

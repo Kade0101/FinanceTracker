@@ -76,6 +76,8 @@ def populate_transactions(transactions):
     connection = sqlite3.connect("database.db")
 
     try:
+        changes_before = connection.total_changes
+
         for row in transactions:
             connection.execute("""
                 INSERT OR IGNORE INTO TransactionList
@@ -93,9 +95,15 @@ def populate_transactions(transactions):
                 None
             ))
 
+        imported = connection.total_changes - changes_before
         connection.commit()
     finally:
         connection.close()
+
+    return {
+        "imported": imported,
+        "duplicates_skipped": len(transactions) - imported,
+    }
 
 
 

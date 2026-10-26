@@ -29,7 +29,12 @@ function App() {
   const [category, setCategory] = useState('All categories')
   const [period, setPeriod] = useState('This month')
 
-  useEffect(() => {
+  const [processing, setProcessing] = useState(false)
+  const [processResult, setProcessResult] = useState('')
+  const [processError, setProcessError] = useState('')
+  const [progress, setProgress] = useState(null)
+
+  const loadTransactions = () =>
     fetch('http://127.0.0.1:8000/transactions')
       .then(response => {
         if (!response.ok) {
@@ -52,9 +57,84 @@ function App() {
 
         setTransactions(formattedTransactions)
       })
+
+  useEffect(() => {
+    loadTransactions()
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const finishProcessing = status => {
+    setProgress(null)
+    setProcessing(false)
+
+    if (status.error) {
+      setProcessError(status.error)
+      return
+    }
+
+    const stats = status.result
+    if (stats) {
+      setProcessResult(
+        `Imported ${stats.imported} new transactions ` +
+          `(${stats.duplicates_skipped} duplicates skipped), ` +
+          `categorised ${stats.categorised} ` +
+          `in ${stats.elapsed_seconds}s.`
+      )
+      loadTransactions().catch(err => setProcessError(err.message))
+    }
+  }
+
+  const pollProcessStatus = () => {
+    fetch('http://127.0.0.1:8000/process-csv/status')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to check processing status')
+        }
+        return response.json()
+      })
+      .then(status => {
+        if (status.active) {
+          setProgress({
+            stage: status.stage,
+            current: status.current,
+            total: status.total,
+          })
+          setTimeout(pollProcessStatus, 400)
+          return
+        }
+
+        finishProcessing(status)
+      })
+      .catch(err => {
+        setProcessError(err.message)
+        setProgress(null)
+        setProcessing(false)
+      })
+  }
+
+  const handleProcessCsv = () => {
+    setProcessing(true)
+    setProcessResult('')
+    setProcessError('')
+    setProgress({ stage: 'Starting', current: 0, total: 0 })
+
+    fetch('http://127.0.0.1:8000/process-csv', { method: 'POST' })
+      .then(async response => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => null)
+          throw new Error(
+            body?.detail || 'Failed to start CSV processing'
+          )
+        }
+        pollProcessStatus()
+      })
+      .catch(err => {
+        setProcessError(err.message)
+        setProgress(null)
+        setProcessing(false)
+      })
+  }
 
   const getDateRange = () => {
     const now = new Date()
@@ -208,6 +288,13 @@ const periodTransactions = transactions.filter(transaction => {
           </div>
 
           <div className="topbar-right">
+            <button
+              className="process-button"
+              onClick={handleProcessCsv}
+              disabled={processing}
+            >
+              {processing ? 'Processing...' : 'Process CSV'}
+            </button>
             <span className="demo-badge">LIVE DATA</span>
             <div className="topbar-avatar">KG</div>
           </div>
@@ -221,6 +308,44 @@ const periodTransactions = transactions.filter(transaction => {
           {error && (
             <p className="error-message">
               Could not load transactions: {error}
+            </p>
+          )}
+
+          {processing && progress && (
+            <div className="process-progress">
+              <div className="process-progress-top">
+                <span>{progress.stage}</span>
+                <span>
+                  {progress.total > 0
+                    ? `${Math.round(
+                        (progress.current / progress.total) * 100
+                      )}% (${progress.current}/${progress.total})`
+                    : '0%'}
+                </span>
+              </div>
+              <div className="progress-track">
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${
+                      progress.total > 0
+                        ? (progress.current / progress.total) * 100
+                        : 0
+                    }%`,
+                    background: '#7c9cff',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {processResult && (
+            <p className="process-result">{processResult}</p>
+          )}
+
+          {processError && (
+            <p className="error-message">
+              Could not process the CSV: {processError}
             </p>
           )}
 

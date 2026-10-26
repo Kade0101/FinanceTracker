@@ -5,6 +5,39 @@ from vendor_alias_manager import load_vendor_aliases
 VENDOR_ALIASES = load_vendor_aliases()
 
 
+def _build_alias_pattern(aliases):
+    """Combine every alias into one precompiled regex.
+
+    Compiling a pattern per alias per description is far too slow once
+    the alias list grows past Python's internal regex cache (512).
+    """
+    alias_to_canonical = {}
+
+    for canonical_name, alias_list in aliases.items():
+        for alias in alias_list:
+            alias_to_canonical.setdefault(
+                alias.casefold(), canonical_name
+            )
+
+    if not alias_to_canonical:
+        return None, {}
+
+    # Longest aliases first so e.g. "woolworths metro" wins
+    # over "woolworths" when both could match.
+    sorted_aliases = sorted(alias_to_canonical, key=len, reverse=True)
+
+    pattern = re.compile(
+        r"(?<!\w)("
+        + "|".join(re.escape(alias) for alias in sorted_aliases)
+        + r")(?!\w)"
+    )
+
+    return pattern, alias_to_canonical
+
+
+ALIAS_PATTERN, ALIAS_TO_CANONICAL = _build_alias_pattern(VENDOR_ALIASES)
+
+
 TRANSACTION_TYPE_RULES = [
     # Employment income: specific employer and payroll descriptions
 
@@ -70,15 +103,11 @@ def classify_transaction(description, credit=0, debit=0):
 
 
 def normalise_vendor(description):
-    description_lower = description.casefold()
+    if ALIAS_PATTERN is not None:
+        match = ALIAS_PATTERN.search(description.casefold())
 
-    for canonical_name, aliases in VENDOR_ALIASES.items():
-        for alias in aliases:
-            if re.search(
-                rf"(?<!\w){re.escape(alias.casefold())}(?!\w)",
-                description_lower
-            ):
-                return canonical_name
+        if match:
+            return ALIAS_TO_CANONICAL[match.group(1)]
 
     # Unknown merchant: use the existing extraction as a fallback
     return description.split(" - ")[0].strip()
