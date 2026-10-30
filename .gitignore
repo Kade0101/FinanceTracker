@@ -10,20 +10,17 @@ __pycache__/
 # Secret API keys
 .env
 
-# Local database and backups
-database.db
-database copy.db
-database backup.db
+# Local database files and backups
+*.db
 
 # Local transaction data
-TransactionList.csv
+*.csv
 
-# Temp file
+# Temp files
 tempCodeRunnerFile.py
 onetimefix.py
 test.py
+temp.py
 
-# local vendor and unknown vendor files
-vendor_aliases.json
-unknown_vendors.json
-known_payees.json
+# Local backend JSON data (frontend/*.json stays tracked)
+/*.json

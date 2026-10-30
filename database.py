@@ -15,7 +15,8 @@ def create_tables():
             balance REAL,
             vendor TEXT,
             category TEXT,
-            cleaned_description TEXT
+            cleaned_description TEXT,
+            transaction_type TEXT NOT NULL DEFAULT 'Unclassified'
         )
     """)
 
@@ -54,6 +55,12 @@ def create_tables():
         connection.execute(
             "ALTER TABLE TransactionList ADD COLUMN cleaned_description TEXT"
         )
+        
+    if "transaction_type" not in existing_columns:
+        connection.execute("""
+            ALTER TABLE TransactionList
+            ADD COLUMN transaction_type TEXT NOT NULL DEFAULT 'Unclassified'
+        """)
 
     connection.commit()
     connection.close()
@@ -111,11 +118,15 @@ def update_transaction_details(transactions):
     connection = sqlite3.connect("database.db")
 
     try:
+        updated = 0
+
         for row in transactions:
-            connection.execute("""
+            cursor = connection.execute("""
                 UPDATE TransactionList
-                SET vendor = ?,
-                    cleaned_description = ?
+                SET
+                    vendor = ?,
+                    cleaned_description = ?,
+                    transaction_type = ?
                 WHERE date = ?
                   AND description = ?
                   AND credit = ?
@@ -124,6 +135,7 @@ def update_transaction_details(transactions):
             """, (
                 row["Vendor"],
                 row["Cleaned_Description"],
+                row["Transaction_Type"],
                 normalise_date(row["Date"]),
                 row["Description"],
                 float(row["Credit"] or 0),
@@ -131,7 +143,14 @@ def update_transaction_details(transactions):
                 float(row["Balance"] or 0)
             ))
 
+            updated += cursor.rowcount
+
         connection.commit()
+
+        print(f"Updated transaction details: {updated}")
+
+        return updated
+
     finally:
         connection.close()
 

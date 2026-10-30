@@ -103,6 +103,17 @@ def classify_transaction(description, credit=0, debit=0):
 
 
 def normalise_vendor(description):
+
+    # Handle payroll descriptions separately.
+    payroll_match = re.search(
+        r"\bSalary\s+(.+?)(?:\s+\d{1,2}/\d{1,2})?$",
+        description,
+        re.IGNORECASE
+    )
+
+    if payroll_match:
+        description = payroll_match.group(1).strip()
+
     if ALIAS_PATTERN is not None:
         match = ALIAS_PATTERN.search(description.casefold())
 
@@ -115,13 +126,40 @@ def normalise_vendor(description):
 
 
 def clean_description(description):
+
+    # Identify payroll-related descriptions.
+    payroll_keywords = (
+        "salary",
+        "wage",
+        "wages",
+        "payroll",
+    )
+
+    is_payroll = any(
+        re.search(rf"\b{re.escape(keyword)}\b", description, re.IGNORECASE)
+        for keyword in payroll_keywords
+    )
+
+    if is_payroll:
+        # Remove the initial bank-generated salary deposit wording.
+        description = re.sub(
+            r"^Salary\s*-\s*Salary Deposit\s*-\s*",
+            "Salary ",
+            description,
+            flags=re.IGNORECASE
+        )
+
     description = re.sub(
         r"\bCard\s+\S+", "", description, flags=re.IGNORECASE
     )
+
     description = re.sub(
-        r"\bReceipt\s+\S+", "", description, flags=re.IGNORECASE
+        r"\bReceipt\s+\d+",
+        "",
+        description,
+        flags=re.IGNORECASE
     )
-    # Remove OSKO payment details and everything after " - Osko"
+
     description = re.sub(
         r"\s*-\s*Osko\b.*$",
         "",
@@ -129,8 +167,8 @@ def clean_description(description):
         flags=re.IGNORECASE
     )
 
-
     description = re.sub(r"\s+", " ", description).strip()
+
     return description
 
 
