@@ -1,9 +1,11 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 import sqlite3
 import threading
 import time
+from pydantic import BaseModel
 
 from csv_import import import_transactions
 from database import (
@@ -11,14 +13,26 @@ from database import (
     populate_transactions,
     update_transaction_details,
 )
-from main import assign_category_to_vendor
+from categorisation import assign_category_to_vendor
 
 app = FastAPI()
+
+
+class VendorCategorySelection(BaseModel):
+    vendor_id: int
+    category: str
+
+
+class VendorCategoryUpdateRequest(BaseModel):
+    selections: list[VendorCategorySelection]
 
 # Allow the React frontend to communicate with this API.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,8 +73,8 @@ def run_csv_pipeline():
             process_state["current"] = current
             process_state["total"] = total
 
-        categorised = assign_category_to_vendor(
-            progress_callback=report_progress
+        categorised = asyncio.run(
+            assign_category_to_vendor(progress_callback=report_progress)
         )
 
         process_state["result"] = {
@@ -129,6 +143,123 @@ def get_transactions():
         """)
 
         return [dict(row) for row in cursor.fetchall()]
+
+    finally:
+        connection.close()
+
+@app.get("/vendors/review")
+def get_vendors_for_review():
+    connection = sqlite3.connect("database.db")
+    connection.row_factory = sqlite3.Row
+
+    try:
+        vendors = connection.execute("""
+            SELECT
+                v.id,
+                v.vendor_name,
+                COUNT(t.id) AS transaction_count,
+                SUM(ABS(t.debit)) AS total_spent
+
+            FROM TransactionList t
+
+            JOIN Vendors v
+                ON t.canonical_id = v.id
+
+            WHERE v.category = 'Other'
+              AND t.debit < 0
+
+            GROUP BY v.id, v.vendor_name
+
+            ORDER BY total_spent DESC
+
+            LIMIT 10
+        """).fetchall()
+
+        categories = connection.execute("""
+            SELECT DISTINCT category
+            FROM Vendors
+            WHERE category IS NOT NULL
+            AND category != ''
+            AND category != 'Other'
+            ORDER BY category
+        """).fetchall()
+
+        return {
+            "vendors": [dict(row) for row in vendors],
+            "categories": [row["category"] for row in categories]
+        }
+
+    finally:
+        connection.close()
+        
+@app.post("/vendors/review")
+def save_vendor_review(request: VendorCategoryUpdateRequest):
+    connection = sqlite3.connect("database.db")
+
+    try:
+        connection.execute("BEGIN")
+        vendor_ids = [selection.vendor_id for selection in request.selections]
+
+        if len(vendor_ids) != len(set(vendor_ids)):
+            raise ValueError("Duplicate vendor IDs in request")
+        
+        if not request.selections:
+            raise ValueError("No vendor categories were provided")
+
+        # Retrieve all valid categories once.
+        categories = {
+            row[0]
+            for row in connection.execute("""
+                SELECT DISTINCT category
+                FROM Vendors
+                WHERE category IS NOT NULL
+                  AND category != ''
+                  AND category != 'Other'
+            """).fetchall()
+        }
+
+        for selection in request.selections:
+            vendor_id = selection.vendor_id
+            category = selection.category.strip()
+
+            if category not in categories:
+                raise ValueError(f"Invalid category: {category}")
+
+            cursor = connection.execute("""
+                UPDATE Vendors
+                SET category = ?
+                WHERE id = ?
+                  AND category = 'Other'
+            """, (category, vendor_id))
+
+            if cursor.rowcount == 0:
+                raise ValueError(
+                    f"Vendor {vendor_id} no longer requires review"
+                )
+
+            connection.execute("""
+                UPDATE TransactionList
+                SET category = ?
+                WHERE canonical_id = ?
+            """, (category, vendor_id))
+
+        connection.commit()
+
+        return {
+            "success": True,
+            "updated_vendors": len(request.selections)
+        }
+
+    except ValueError as error:
+        connection.rollback()
+        raise HTTPException(status_code=400, detail=str(error))
+
+    except Exception:
+        connection.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save vendor categories"
+        )
 
     finally:
         connection.close()

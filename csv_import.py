@@ -1,4 +1,6 @@
 import csv
+from operator import index
+from pathlib import Path
 import re
 from vendor_alias_manager import load_vendor_aliases
 
@@ -24,12 +26,13 @@ def _build_alias_pattern(aliases):
 
     # Longest aliases first so e.g. "woolworths metro" wins
     # over "woolworths" when both could match.
-    sorted_aliases = sorted(alias_to_canonical, key=len, reverse=True)
+    sorted_aliases = sorted(alias_to_canonical, key=len, reverse=True) # Longest aliases first
 
     pattern = re.compile(
-        r"(?<!\w)("
+        r"^\s*("
         + "|".join(re.escape(alias) for alias in sorted_aliases)
-        + r")(?!\w)"
+        + r")(?!\w)",
+        re.IGNORECASE
     )
 
     return pattern, alias_to_canonical
@@ -104,7 +107,17 @@ def classify_transaction(description, credit=0, debit=0):
 
 def normalise_vendor(description):
 
-    # Handle payroll descriptions separately.
+    description = description.strip()
+
+    # Handle payroll descriptions.
+    description = re.sub(
+        r"\s+PA\s+PAYROLL\S*$",
+        "",
+        description,
+        flags=re.IGNORECASE
+    ).strip()
+
+    # Handle existing Salary descriptions.
     payroll_match = re.search(
         r"\bSalary\s+(.+?)(?:\s+\d{1,2}/\d{1,2})?$",
         description,
@@ -115,12 +128,11 @@ def normalise_vendor(description):
         description = payroll_match.group(1).strip()
 
     if ALIAS_PATTERN is not None:
-        match = ALIAS_PATTERN.search(description.casefold())
+        match = ALIAS_PATTERN.match(description)
 
         if match:
-            return ALIAS_TO_CANONICAL[match.group(1)]
+            return ALIAS_TO_CANONICAL[match.group(1).casefold()]
 
-    # Unknown merchant: use the existing extraction as a fallback
     return description.split(" - ")[0].strip()
 
 
@@ -166,6 +178,17 @@ def clean_description(description):
         description,
         flags=re.IGNORECASE
     )
+    
+    # Remove Visa purchase metadata, including location and date.
+    description = re.sub(
+        r"\s*-\s*Visa Purchase\s*-\s*In\s+.*$",
+        "",
+        description,
+        flags=re.IGNORECASE
+    )
+
+    # Remove trailing separators.
+    description = re.sub(r"\s*-\s*$", "", description)
 
     description = re.sub(r"\s+", " ", description).strip()
 
@@ -173,9 +196,12 @@ def clean_description(description):
 
 
 
-def import_transactions():
-    with open(
-        "TransactionList.csv",
+def import_transactions(csv_path="TransactionList.csv"):
+    csv_path = Path(csv_path)
+    if not csv_path.is_absolute():
+        csv_path = Path(__file__).resolve().parent / csv_path
+
+    with csv_path.open(
         "r",
         encoding="utf-8-sig",
         newline=""

@@ -1,26 +1,20 @@
+#rawdata
+TransactionList.csv
 
-# Python virtual environment
-.venv/
+#alias,vendor and payee caching
+vendor_aliases.json
+unknown_vendors.json
+known_payees.json
 
-# Python cache files
-__pycache__/
-*.py[cod]
-.vscode/
-
-# Secret API keys
-.env
-
-# Local database files and backups
+#databases
+database.db
+database copy.db
 *.db
 
-# Local transaction data
-*.csv
+# Python & Environment
+.venv/
+__pycache__/
+*.py[cod]
 
-# Temp files
-tempCodeRunnerFile.py
-onetimefix.py
-test.py
-temp.py
-
-# Local backend JSON data (frontend/*.json stays tracked)
-/*.json
+# Editor Settings
+.vscode/

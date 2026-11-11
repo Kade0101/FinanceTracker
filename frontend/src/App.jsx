@@ -34,6 +34,14 @@ function App() {
   const [processError, setProcessError] = useState('')
   const [progress, setProgress] = useState(null)
 
+  const [reviewVendors, setReviewVendors] = useState([])
+  const [availableCategories, setAvailableCategories] = useState([])
+  const [vendorSelections, setVendorSelections] = useState({})
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [reviewMessage, setReviewMessage] = useState('')
+
   const loadTransactions = () =>
     fetch('http://127.0.0.1:8000/transactions')
       .then(response => {
@@ -58,11 +66,81 @@ function App() {
         setTransactions(formattedTransactions)
       })
 
+  const loadVendorReview = () => {
+    setReviewLoading(true)
+    setReviewError('')
+
+    fetch('http://127.0.0.1:8000/vendors/review')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to load vendors for review')
+        }
+        return response.json()
+      })
+      .then(data => {
+        setReviewVendors(data.vendors)
+        setAvailableCategories(data.categories)
+      })
+      .catch(err => setReviewError(err.message))
+      .finally(() => setReviewLoading(false))
+  }
+
+  const handleSaveVendorCategories = () => {
+    const selections = reviewVendors
+      .filter(vendor => vendorSelections[vendor.id])
+      .map(vendor => ({
+        vendor_id: vendor.id,
+        category: vendorSelections[vendor.id],
+      }))
+
+    if (selections.length === 0) {
+      setReviewError('Please select a category for at least one vendor.')
+      return
+    }
+
+    setReviewSaving(true)
+    setReviewError('')
+    setReviewMessage('')
+
+    fetch('http://127.0.0.1:8000/vendors/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ selections }),
+    })
+      .then(async response => {
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to save categories')
+        }
+
+        return data
+      })
+      .then(data => {
+        setReviewMessage(
+          `Successfully updated ${data.updated_vendors} vendors.`
+        )
+        setVendorSelections({})
+        loadTransactions()
+        loadVendorReview()
+      })
+      .catch(err => setReviewError(err.message))
+      .finally(() => setReviewSaving(false))
+  }
+
   useEffect(() => {
     loadTransactions()
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+  if (activePage === 'Vendor Review') {
+    loadVendorReview()
+  }
+}, [activePage])
 
   const finishProcessing = status => {
     setProgress(null)
@@ -72,6 +150,8 @@ function App() {
       setProcessError(status.error)
       return
     }
+
+  
 
     const stats = status.result
     if (stats) {
@@ -177,11 +257,22 @@ const periodTransactions = transactions.filter(transaction => {
     transactionDate < periodEnd
 })
 
-  const totalIncome = periodTransactions
+  const isTransfer = transaction => {
+    const categoryName = (transaction.category || '').toLowerCase()
+    return categoryName === 'transfer' || categoryName === 'internal transfer'
+  }
+
+  // Transfers should remain in the database for lookups, but not count
+  // towards income/expense totals or spending breakdowns.
+  const summaryTransactions = periodTransactions.filter(
+    transaction => !isTransfer(transaction)
+  )
+
+  const totalIncome = summaryTransactions
     .filter(transaction => transaction.amount > 0)
     .reduce((sum, transaction) => sum + transaction.amount, 0)
 
-  const totalExpenses = periodTransactions
+  const totalExpenses = summaryTransactions
     .filter(transaction => transaction.amount < 0)
     .reduce(
       (sum, transaction) => sum + Math.abs(transaction.amount),
@@ -189,7 +280,7 @@ const periodTransactions = transactions.filter(transaction => {
     )
 
   const spending = Object.values(
-    periodTransactions.reduce((groups, transaction) => {
+    summaryTransactions.reduce((groups, transaction) => {
       if (transaction.amount >= 0) return groups
 
       const name = transaction.category
@@ -229,11 +320,12 @@ const periodTransactions = transactions.filter(transaction => {
     return matchesSearch && matchesCategory
   })
 
-  const navItems = [
-    { name: 'Overview', icon: '◫' },
-    { name: 'Transactions', icon: '⇄' },
-    { name: 'Categories', icon: '▦' },
-  ]
+const navItems = [
+  { name: 'Overview', icon: '◫' },
+  { name: 'Transactions', icon: '⇄' },
+  { name: 'Categories', icon: '▦' },
+  { name: 'Vendor Review', icon: '✓' },
+]
 
   const recentTransactions = [...periodTransactions]
     .sort((a, b) => {
@@ -578,6 +670,98 @@ const periodTransactions = transactions.filter(transaction => {
               )}
             </section>
           )}
+
+          {activePage === 'Vendor Review' && (
+  <section className="panel vendor-review-panel">
+    <div className="panel-heading">
+      <div>
+        <h3>Vendors requiring review</h3>
+        <p>
+          Assign categories to vendors currently classified as Other.
+        </p>
+      </div>
+      <span className="review-count">
+        {reviewVendors.length} vendors
+      </span>
+    </div>
+
+    {reviewLoading && (
+      <p className="empty-state">Loading vendors...</p>
+    )}
+
+    {reviewError && (
+      <p className="error-message">{reviewError}</p>
+    )}
+
+    {reviewMessage && (
+      <p className="process-result">{reviewMessage}</p>
+    )}
+
+    {!reviewLoading && reviewVendors.length > 0 && (
+      <>
+        <div className="vendor-review-list">
+          {reviewVendors.map(vendor => (
+            <div className="vendor-review-row" key={vendor.id}>
+              <div className="vendor-review-details">
+                <strong>{vendor.vendor_name}</strong>
+                <span>
+                  {vendor.transaction_count} transactions
+                </span>
+              </div>
+
+              <div className="vendor-review-spending">
+                {money(vendor.total_spent)}
+              </div>
+
+              <select
+                className="vendor-category-select"
+                value={vendorSelections[vendor.id] || ''}
+                onChange={event =>
+                  setVendorSelections(previous => ({
+                    ...previous,
+                    [vendor.id]: event.target.value,
+                  }))
+                }
+                aria-label={`Category for ${vendor.vendor_name}`}
+              >
+                <option value="">Select category</option>
+
+                {availableCategories.map(item => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+
+        <div className="vendor-review-footer">
+          <span>
+            {Object.keys(vendorSelections).length} categories selected
+          </span>
+
+          <button
+            className="save-categories-button"
+            onClick={handleSaveVendorCategories}
+            disabled={
+              reviewSaving ||
+              Object.keys(vendorSelections).length === 0
+            }
+          >
+            {reviewSaving ? 'Saving...' : 'Save Categories'}
+          </button>
+        </div>
+      </>
+    )}
+
+    {!reviewLoading && reviewVendors.length === 0 && !reviewError && (
+      <p className="empty-state">
+        No vendors currently require review.
+      </p>
+    )}
+  </section>
+)}
 
           {activePage === 'Transactions' && (
             <section className="panel transactions-panel">

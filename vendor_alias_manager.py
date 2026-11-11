@@ -161,11 +161,11 @@ def get_vendor_canonical(vendor):
     if exact_match is not None:
         return exact_match
 
-    # Otherwise, search for an existing alias inside the description.
+    # Otherwise, check for an alias at the beginning of the vendor.
     pattern, alias_lookup = _get_alias_pattern()
 
     if pattern is not None:
-        match = pattern.search(vendor)
+        match = pattern.match(vendor)
 
         if match:
             return alias_lookup[match.group(1)]

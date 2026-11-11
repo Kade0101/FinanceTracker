@@ -1,10 +1,26 @@
 from datetime import datetime
 import sqlite3
+from pathlib import Path
 
+DATABASE_PATH = Path(__file__).resolve().parent / "database.db"
+
+def get_connection():
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
 
 def create_tables():
-    connection = sqlite3.connect("database.db")
-
+    print("Creating database tables...")
+    connection = get_connection()
+    
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS Vendors (
+            id INTEGER PRIMARY KEY,
+            vendor_name TEXT UNIQUE NOT NULL,
+            category TEXT NOT NULL
+        )
+    """)
+    
     connection.execute("""
         CREATE TABLE IF NOT EXISTS TransactionList (
             id INTEGER PRIMARY KEY,
@@ -14,19 +30,15 @@ def create_tables():
             debit REAL DEFAULT 0,
             balance REAL,
             vendor TEXT,
+            canonical_id INTEGER,
             category TEXT,
             cleaned_description TEXT,
-            transaction_type TEXT NOT NULL DEFAULT 'Unclassified'
+            transaction_type TEXT NOT NULL DEFAULT 'Unclassified',
+            FOREIGN KEY (canonical_id) REFERENCES Vendors(id)
         )
     """)
 
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS Vendors (
-            id INTEGER PRIMARY KEY,
-            vendor_name TEXT UNIQUE NOT NULL,
-            category TEXT NOT NULL
-        )
-    """)
+
     
     connection.execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_transaction
@@ -61,6 +73,11 @@ def create_tables():
             ALTER TABLE TransactionList
             ADD COLUMN transaction_type TEXT NOT NULL DEFAULT 'Unclassified'
         """)
+        
+    if "canonical_id" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE TransactionList ADD COLUMN canonical_id INTEGER"
+        )
 
     connection.commit()
     connection.close()
@@ -80,7 +97,7 @@ def normalise_date(date_text):
     raise ValueError(f"Unsupported date format: {date_text!r}")
 
 def populate_transactions(transactions):
-    connection = sqlite3.connect("database.db")
+    connection = get_connection()
 
     try:
         changes_before = connection.total_changes
@@ -115,7 +132,7 @@ def populate_transactions(transactions):
 
 
 def update_transaction_details(transactions):
-    connection = sqlite3.connect("database.db")
+    connection = get_connection()
 
     try:
         updated = 0
@@ -157,28 +174,45 @@ def update_transaction_details(transactions):
 
 
 def check_for_cached_vendor(vendor_name):
-    connection = sqlite3.connect("database.db")
-    cursor = connection.execute("""
-        SELECT category
-        FROM Vendors
-        WHERE vendor_name = ?
-    """, (vendor_name,))
-    result = cursor.fetchone()
-    connection.close()
-    return result[0] if result else None
+    connection = get_connection()
+
+    try:
+        cursor = connection.execute("""
+            SELECT id, category
+            FROM Vendors
+            WHERE vendor_name = ?
+        """, (vendor_name,))
+
+        return cursor.fetchone()
+
+    finally:
+        connection.close()
 
 def cache_vendor(vendor_name, category):
-    connection = sqlite3.connect("database.db")
-    connection.execute("""
-        INSERT OR REPLACE INTO Vendors (vendor_name, category)
-        VALUES (?, ?)
-    """, (vendor_name, category))
-    connection.commit()
-    connection.close()
-print("Database created successfully!")
+    connection = get_connection()
 
+    try:
+        connection.execute("""
+            INSERT INTO Vendors (vendor_name, category)
+            VALUES (?, ?)
+            ON CONFLICT(vendor_name)
+            DO UPDATE SET category = excluded.category
+        """, (vendor_name, category))
+
+        connection.commit()
+
+        cursor = connection.execute("""
+            SELECT id
+            FROM Vendors
+            WHERE vendor_name = ?
+        """, (vendor_name,))
+
+        return cursor.fetchone()[0]
+
+    finally:
+        connection.close()
 def retrieve_description(start_date=None):
-    connection = sqlite3.connect("database.db")
+    connection = get_connection()
     print(f"Retrieving descriptions from {start_date}")
     if not start_date:
         cursor = connection.execute("""
@@ -197,20 +231,22 @@ def retrieve_description(start_date=None):
 
     return [row[0] for row in results]
 
-def update_transaction_category(description, category):
-    connection = sqlite3.connect("database.db")
+def update_transaction_category(description, category, canonical_id=None):
+    connection = get_connection()
 
     try:
         connection.execute("""
             UPDATE TransactionList
-            SET category = ?
+            SET
+                category = ?,
+                canonical_id = COALESCE(?, canonical_id)
             WHERE cleaned_description = ?
-        """, (category, description))
+        """, (category, canonical_id, description))
 
         connection.commit()
+
     finally:
         connection.close()
-        
 
 def retrieve_transactions():
     connection = sqlite3.connect("database.db")
@@ -231,5 +267,21 @@ def retrieve_transactions():
             }
             for row in cursor.fetchall()
         ]
+    finally:
+        connection.close()
+        
+def get_vendor_id(vendor_name):
+    connection = get_connection()
+
+    try:
+        cursor = connection.execute("""
+            SELECT id
+            FROM Vendors
+            WHERE vendor_name = ? COLLATE NOCASE
+        """, (vendor_name,))
+
+        result = cursor.fetchone()
+        return result[0] if result else None
+
     finally:
         connection.close()
