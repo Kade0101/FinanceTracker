@@ -34,7 +34,7 @@ def _build_alias_pattern(aliases):
         + r")(?!\w)",
         re.IGNORECASE
     )
-
+    print(pattern)
     return pattern, alias_to_canonical
 
 
@@ -42,16 +42,17 @@ ALIAS_PATTERN, ALIAS_TO_CANONICAL = _build_alias_pattern(VENDOR_ALIASES)
 
 
 TRANSACTION_TYPE_RULES = [
-    # Employment income: specific employer and payroll descriptions
+    # Employment income
 
     (
         "Employment Income",
         [
-            r"\bTIMEVALE\s+P/L\b",
-            r"\bREDCAPE HOTEL\b",
-            r"\bHOSPITALITY FORC\b",
-            r"\bAUSSIE WORLD\b",
-            r"\bAWX LABOUR\b",
+            r"\bSALARY(?:\s+DEPOSIT)?\b",
+            r"\bWAGES?\b",
+            r"\bPAYROLL\b",
+            r"\bPAY\s+DEPOSIT\b",
+            r"\bEMPLOYMENT\s+INCOME\b",
+            r"\bINCOME\b",
         ],
     ),
 
@@ -281,36 +282,4 @@ def strip_emojis(text: str) -> str:
 
     return " ".join(text.split())
 
-
-if __name__ == "__main__":
-    transactions = import_transactions()
-
-    classified = {}
-    examples = {}
-
-    for transaction in transactions:
-        transaction_type = transaction.get(
-            "Transaction_Type", "Unclassified"
-        )
-
-        classified[transaction_type] = (
-            classified.get(transaction_type, 0) + 1
-        )
-
-        examples.setdefault(transaction_type, [])
-        if len(examples[transaction_type]) < 5:
-            examples[transaction_type].append(
-                transaction.get("Description", "")
-            )
-
-    print("\nTRANSACTION CLASSIFICATION PREVIEW")
-    print("-" * 40)
-
-    for transaction_type, count in sorted(classified.items()):
-        print(f"\n{transaction_type}: {count} transactions")
-
-        for description in examples[transaction_type]:
-            print(f"  - {description}")
-
-    print("\nPreview only — no database changes made.")
 

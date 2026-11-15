@@ -1,5 +1,6 @@
 #rawdata
 TransactionList.csv
+*.csv
 
 #alias,vendor and payee caching
 vendor_aliases.json
