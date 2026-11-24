@@ -55,6 +55,26 @@ process_state = {
 }
 
 
+def classify_cash_flow(transaction):
+    description = (transaction["description"] or "").casefold()
+    transaction_type = (
+        transaction["transaction_type"] or ""
+    ).casefold()
+
+    if (
+        transaction_type == "internal transfer"
+        or "internal transfer" in description
+    ):
+        return "internal_transfer"
+
+    category = (transaction["category"] or "").casefold()
+    if category in ("investment", "investments"):
+        return "investment"
+
+    amount = (transaction["credit"] or 0) + (transaction["debit"] or 0)
+    return "income" if amount > 0 else "expense"
+
+
 def run_csv_pipeline():
     start = time.perf_counter()
 
@@ -137,12 +157,19 @@ def get_transactions():
                 balance,
                 vendor,
                 category,
-                cleaned_description
+                cleaned_description,
+                transaction_type
             FROM TransactionList
             ORDER BY date DESC, id DESC
         """)
 
-        return [dict(row) for row in cursor.fetchall()]
+        return [
+            {
+                **dict(row),
+                "cash_flow_type": classify_cash_flow(row),
+            }
+            for row in cursor.fetchall()
+        ]
 
     finally:
         connection.close()
@@ -165,7 +192,7 @@ def get_vendors_for_review():
             JOIN Vendors v
                 ON t.canonical_id = v.id
 
-            WHERE v.category = 'Other'
+            WHERE v.category IN ('Other', 'Transfer')
               AND t.debit < 0
 
             GROUP BY v.id, v.vendor_name
@@ -176,11 +203,18 @@ def get_vendors_for_review():
         """).fetchall()
 
         categories = connection.execute("""
-            SELECT DISTINCT category
-            FROM Vendors
-            WHERE category IS NOT NULL
-            AND category != ''
-            AND category != 'Other'
+            SELECT category
+            FROM (
+                SELECT DISTINCT category
+                FROM Vendors
+                WHERE category IS NOT NULL
+                  AND category != ''
+                  AND category != 'Other'
+
+                UNION
+
+                SELECT 'Investments'
+            )
             ORDER BY category
         """).fetchall()
 
@@ -210,11 +244,18 @@ def save_vendor_review(request: VendorCategoryUpdateRequest):
         categories = {
             row[0]
             for row in connection.execute("""
-                SELECT DISTINCT category
-                FROM Vendors
-                WHERE category IS NOT NULL
-                  AND category != ''
-                  AND category != 'Other'
+                SELECT category
+                FROM (
+                    SELECT DISTINCT category
+                    FROM Vendors
+                    WHERE category IS NOT NULL
+                      AND category != ''
+                      AND category != 'Other'
+
+                    UNION
+
+                    SELECT 'Investments'
+                )
             """).fetchall()
         }
 
@@ -229,7 +270,7 @@ def save_vendor_review(request: VendorCategoryUpdateRequest):
                 UPDATE Vendors
                 SET category = ?
                 WHERE id = ?
-                  AND category = 'Other'
+                  AND category IN ('Other', 'Transfer')
             """, (category, vendor_id))
 
             if cursor.rowcount == 0:
