@@ -91,12 +91,6 @@ h1 { margin-bottom: 7px; color: var(--ink); font-size: 29px; letter-spacing: -1p
 .cash-flow-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -3px 0 12px; }
 .chart-interval-control { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 700; }
 .chart-interval-control select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: var(--surface); font-size: 10px; font-weight: 700; }
-.chart-outlier-marker path { fill: var(--negative); }
-.chart-outlier-marker.chart-outlier-positive path { fill: var(--positive); }
-.chart-outlier-summary { position: relative; height: 42px; margin: 0; }
-.chart-outlier-callout { position: absolute; transform: translateX(-50%); font-size: 10px; font-weight: 700; white-space: nowrap; }
-.chart-outlier-positive { color: var(--positive); }
-.chart-outlier-negative { color: var(--negative); }
 .chart-mode-toggle { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
 .chart-mode-toggle button { padding: 6px 9px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .chart-mode-toggle button:hover { color: var(--ink); }

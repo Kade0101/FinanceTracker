@@ -79,9 +79,8 @@ function SpendingDonut({ spending, totalSpending }) {
   )
 }
 
-function CashFlowGraph({ data, interval, onIntervalChange }) {
+function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange }) {
   const [chartMode, setChartMode] = useState('income-expenses')
-  const [scaleMode, setScaleMode] = useState('fit-all')
 
   if (data.length === 0) {
     return <p className="empty-state">No cash flow data for this period.</p>
@@ -96,20 +95,8 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
   const values = data.flatMap(item =>
     showsNet ? [item.net] : [item.income, item.expenses]
   )
-  const rawMaxValue = Math.max(0, ...values)
-  const rawMinValue = Math.min(0, ...values)
-  const sortedAbsoluteValues = values
-    .map(value => Math.abs(value))
-    .sort((a, b) => a - b)
-  const typicalLimit = sortedAbsoluteValues[
-    Math.floor((sortedAbsoluteValues.length - 1) * 0.9)
-  ] || 0
-  const maxValue = scaleMode === 'typical'
-    ? Math.min(rawMaxValue, Math.max(500, typicalLimit))
-    : rawMaxValue
-  const minValue = scaleMode === 'typical' && showsNet
-    ? Math.max(rawMinValue, -Math.max(500, typicalLimit))
-    : rawMinValue
+  const maxValue = Math.max(0, ...values)
+  const minValue = Math.min(0, ...values)
   const valueRange = maxValue - minValue || 1
   const xFor = index =>
     padding.left + (data.length === 1
@@ -118,7 +105,7 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
   const yFor = value =>
     padding.top + (maxValue - value) / valueRange * plotHeight
   const pointsFor = key =>
-    data.map((item, index) => `${xFor(index)},${yFor(Math.max(minValue, Math.min(maxValue, item[key])))}`).join(' ')
+    data.map((item, index) => `${xFor(index)},${yFor(item[key])}`).join(' ')
   const gridValues = [...new Set([
     ...Array.from({ length: 5 }, (_, index) =>
       maxValue - valueRange * index / 4
@@ -126,25 +113,6 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
     0,
   ])].sort((a, b) => b - a)
   const zeroPercent = `${((yFor(0) - padding.top) / plotHeight) * 100}%`
-  const visibleSeries = showsNet
-    ? [{ key: 'net', label: 'Net cash flow' }]
-    : [
-      { key: 'income', label: 'Income' },
-      { key: 'expenses', label: 'Expenses' },
-    ]
-  const outlierItems = scaleMode === 'typical'
-    ? data.flatMap((item, index) => visibleSeries
-      .filter(seriesItem =>
-        item[seriesItem.key] > maxValue ||
-        item[seriesItem.key] < minValue
-      )
-      .map(seriesItem => ({
-        item,
-        index,
-        seriesItem,
-        actualValue: item[seriesItem.key],
-      })))
-    : []
 
   return (
     <>
@@ -156,21 +124,11 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
             onChange={event => onIntervalChange(event.target.value)}
             aria-label="Group chart data by"
           >
-            <option value="day">Day</option>
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-          </select>
-        </label>
-
-        <label className="chart-interval-control">
-          <span>Scale</span>
-          <select
-            value={scaleMode}
-            onChange={event => setScaleMode(event.target.value)}
-            aria-label="Select chart scale"
-          >
-            <option value="fit-all">Fit all</option>
-            <option value="typical">Typical range</option>
+            {availableIntervals.map(option => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -206,31 +164,6 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
       </div>
 
       <div className="cash-flow-chart-scroll">
-        {outlierItems.length > 0 && (
-          <div
-            className="chart-outlier-summary"
-            style={{ width: `${chartWidth}px` }}
-            aria-label="Values outside typical range"
-          >
-            {outlierItems.map(({ item, index, seriesItem, actualValue }, outlierIndex) => {
-              const isPositiveIndicator =
-                seriesItem.key !== 'expenses' && actualValue >= 0
-
-              return (
-                <span
-                  className={`chart-outlier-callout ${isPositiveIndicator ? 'chart-outlier-positive' : 'chart-outlier-negative'}`}
-                  style={{
-                    left: `${xFor(index)}px`,
-                    top: `${4 + (outlierIndex % 3) * 9}px`,
-                  }}
-                  key={`${item.key}-${seriesItem.key}`}
-                >
-                  {seriesItem.label} {money(actualValue)}
-                </span>
-              )
-            })}
-          </div>
-        )}
         <svg
           className="cash-flow-chart"
           style={{ width: `${chartWidth}px` }}
@@ -291,35 +224,6 @@ function CashFlowGraph({ data, interval, onIntervalChange }) {
               points={pointsFor('net')}
             />
           )}
-
-          {outlierItems.map(({ item, index, seriesItem, actualValue }) => {
-            const isAboveRange = actualValue > maxValue
-            const isPositiveIndicator =
-              seriesItem.key !== 'expenses' && actualValue >= 0
-            const clippedValue = Math.max(
-              minValue,
-              Math.min(maxValue, actualValue)
-            )
-            const markerX = xFor(index)
-            const markerY = yFor(clippedValue) + (isAboveRange ? -10 : -14)
-
-            return (
-              <g
-                className={`chart-outlier-marker ${isPositiveIndicator ? 'chart-outlier-positive' : 'chart-outlier-negative'}`}
-                key={`${item.key}-${seriesItem.key}`}
-                aria-label={`${seriesItem.label}: ${money(actualValue)} outside typical range`}
-              >
-                <path
-                  d={isAboveRange
-                    ? `M ${markerX - 6} ${markerY + 5} L ${markerX} ${markerY - 5} L ${markerX + 6} ${markerY + 5} Z`
-                    : `M ${markerX - 6} ${markerY - 5} L ${markerX} ${markerY + 5} L ${markerX + 6} ${markerY - 5} Z`}
-                />
-                <title>
-                  {`${seriesItem.label}: ${money(actualValue)} (outside typical range)`}
-                </title>
-              </g>
-            )
-          })}
 
           {data.map((item, index) => (
             <text
@@ -607,6 +511,30 @@ const periodTransactions = transactions.filter(transaction => {
     transactionDate < periodEnd
 })
 
+  const transactionDates = periodTransactions
+    .map(transaction => new Date(`${transaction.date}T00:00:00`).getTime())
+    .filter(Number.isFinite)
+  const selectedRangeDays = period === 'All time'
+    ? transactionDates.length > 1
+      ? (Math.max(...transactionDates) - Math.min(...transactionDates)) /
+        (1000 * 60 * 60 * 24) + 1
+      : 0
+    : period === 'This month' || period === 'Last month'
+      ? 31
+      : period === 'Last 3 months'
+        ? 92
+        : 365
+  const availableCashFlowIntervals = [
+    ...(selectedRangeDays <= 365 ? ['day'] : []),
+    'week',
+    ...(selectedRangeDays >= 60 ? ['month'] : []),
+  ]
+  const selectedCashFlowInterval = availableCashFlowIntervals.includes(
+    cashFlowInterval
+  )
+    ? cashFlowInterval
+    : availableCashFlowIntervals[0]
+
   const isTransfer = transaction =>
     transaction.cash_flow_type === 'internal_transfer'
 
@@ -667,11 +595,11 @@ const periodTransactions = transactions.filter(transaction => {
       const transactionDate = new Date(`${transaction.date}T00:00:00`)
       const periodDate = new Date(transactionDate)
 
-      if (cashFlowInterval === 'week') {
+      if (selectedCashFlowInterval === 'week') {
         const dayOfWeek = periodDate.getDay()
         const daysSinceMonday = (dayOfWeek + 6) % 7
         periodDate.setDate(periodDate.getDate() - daysSinceMonday)
-      } else if (cashFlowInterval === 'month') {
+      } else if (selectedCashFlowInterval === 'month') {
         periodDate.setDate(1)
       }
 
@@ -683,12 +611,12 @@ const periodTransactions = transactions.filter(transaction => {
         groups[key] = {
           key,
           label:
-            cashFlowInterval === 'day'
+            selectedCashFlowInterval === 'day'
               ? transactionDate.toLocaleDateString('en-AU', {
                 day: 'numeric',
                 month: 'short',
               })
-              : cashFlowInterval === 'week'
+              : selectedCashFlowInterval === 'week'
                 ? periodDate.toLocaleDateString('en-AU', {
                   day: 'numeric',
                   month: 'short',
@@ -931,9 +859,9 @@ const navItems = [
                   <div className="panel-heading">
                     <div>
                       <h3>
-                        {cashFlowInterval === 'day'
+                        {selectedCashFlowInterval === 'day'
                           ? 'Daily cash flow'
-                          : cashFlowInterval === 'week'
+                          : selectedCashFlowInterval === 'week'
                             ? 'Weekly cash flow'
                             : 'Monthly cash flow'}
                       </h3>
@@ -943,7 +871,8 @@ const navItems = [
 
                   <CashFlowGraph
                     data={cashFlowData}
-                    interval={cashFlowInterval}
+                    interval={selectedCashFlowInterval}
+                    availableIntervals={availableCashFlowIntervals}
                     onIntervalChange={setCashFlowInterval}
                   />
                 </article>
