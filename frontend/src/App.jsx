@@ -19,6 +19,27 @@ const categoryColors = [
   '#8dcf80',
 ]
 
+const categoryIcons = {
+  Bills: '🧾',
+  Entertainment: '🎬',
+  'Fast Food': '🍔',
+  Groceries: '🛒',
+  Income: '↙',
+  Investments: '📈',
+  Nightlife: '🌙',
+  Other: '•',
+  'Restaurant Dining': '🍽️',
+  Shopping: '🛍️',
+  Transfer: '⇄',
+  Transport: '🚌',
+  Uncategorised: '•',
+}
+
+categoryIcons.Travel = '✈️'
+
+categoryIcons.Gambling = '🎲'
+categoryIcons.Fuel = '⛽'
+
 const compactMoney = value =>
   new Intl.NumberFormat('en-AU', {
     style: 'currency',
@@ -93,7 +114,7 @@ function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange })
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
   const values = data.flatMap(item =>
-    showsNet ? [item.net] : [item.income, item.expenses]
+    showsNet ? [item.net] : [item.income, item.expenses, item.investments]
   )
   const maxValue = Math.max(0, ...values)
   const minValue = Math.min(0, ...values)
@@ -151,13 +172,14 @@ function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange })
           </button>
         </div>
 
-        <div className="cash-flow-legend" aria-label={`${showsNet ? 'Net cash flow' : 'Income and expenses'} series`}>
+        <div className="cash-flow-legend" aria-label={`${showsNet ? 'Net cash flow' : 'Income, expenses, and investments'} series`}>
           {showsNet ? (
             <span><i className="series-key net-key" />Net cash flow</span>
           ) : (
             <>
               <span><i className="series-key income-key" />Income</span>
               <span><i className="series-key expense-key" />Expenses</span>
+              <span><i className="series-key investment-key" />Investments</span>
             </>
           )}
         </div>
@@ -169,9 +191,9 @@ function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange })
           style={{ width: `${chartWidth}px` }}
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           role="img"
-          aria-label={showsNet ? 'Monthly net cash flow' : 'Monthly income and expenses'}
+          aria-label={showsNet ? 'Net cash flow' : 'Income, expenses, and investments'}
         >
-          <title>{showsNet ? 'Monthly net cash flow' : 'Monthly income and expenses'}</title>
+          <title>{showsNet ? 'Net cash flow' : 'Income, expenses, and investments'}</title>
 
           <defs>
             <linearGradient
@@ -215,6 +237,7 @@ function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange })
             <>
               <polyline className="cash-flow-line income-line" points={pointsFor('income')} />
               <polyline className="cash-flow-line expense-line" points={pointsFor('expenses')} />
+              <polyline className="cash-flow-line investment-line" points={pointsFor('investments')} />
             </>
           )}
           {showsNet && (
@@ -279,6 +302,9 @@ function App() {
 
   const [activePage, setActivePage] = useState('Overview')
   const [search, setSearch] = useState('')
+  const [transactionSearchResults, setTransactionSearchResults] = useState(null)
+  const [transactionSearchLoading, setTransactionSearchLoading] = useState(false)
+  const [transactionSearchError, setTransactionSearchError] = useState('')
   const [category, setCategory] = useState('All categories')
   const [period, setPeriod] = useState('This month')
   const [cashFlowInterval, setCashFlowInterval] = useState('month')
@@ -296,28 +322,35 @@ function App() {
   const [reviewError, setReviewError] = useState('')
   const [reviewMessage, setReviewMessage] = useState('')
 
-  const loadTransactions = () =>
-    fetch('http://127.0.0.1:8000/transactions')
+  const formatTransactions = data => data.map(transaction => ({
+    ...transaction,
+    vendor:
+      transaction.vendor ||
+      transaction.description ||
+      'Unknown',
+    category: transaction.category || 'Uncategorised',
+    amount:
+      Number(transaction.credit || 0) +
+      Number(transaction.debit || 0),
+  }))
+
+  const loadTransactions = (query = '') =>
+    fetch(
+      `http://127.0.0.1:8000/transactions${query ? `?search=${encodeURIComponent(query)}` : ''}`
+    )
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to load transactions')
         }
         return response.json()
       })
-      .then(data => {
-        const formattedTransactions = data.map(transaction => ({
-          ...transaction,
-          vendor:
-            transaction.vendor ||
-            transaction.description ||
-            'Unknown',
-          category: transaction.category || 'Uncategorised',
-          amount:
-            Number(transaction.credit || 0) +
-            Number(transaction.debit || 0),
-        }))
-
-        setTransactions(formattedTransactions)
+      .then(formatTransactions)
+      .then(formattedTransactions => {
+        if (query) {
+          setTransactionSearchResults(formattedTransactions)
+        } else {
+          setTransactions(formattedTransactions)
+        }
       })
 
   const loadVendorReview = () => {
@@ -389,6 +422,47 @@ function App() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    const query = search.trim()
+
+    if (!query) {
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      setTransactionSearchLoading(true)
+      setTransactionSearchError('')
+
+      fetch(
+        `http://127.0.0.1:8000/transactions?search=${encodeURIComponent(query)}`,
+        { signal: controller.signal }
+      )
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to search transactions')
+          }
+          return response.json()
+        })
+        .then(data => setTransactionSearchResults(formatTransactions(data)))
+        .catch(err => {
+          if (err.name !== 'AbortError') {
+            setTransactionSearchError(err.message)
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setTransactionSearchLoading(false)
+          }
+        })
+    }, 250)
+
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [search])
 
   useEffect(() => {
   if (activePage === 'Vendor Review') {
@@ -648,17 +722,23 @@ const periodTransactions = transactions.filter(transaction => {
     }, {})
   ).sort((a, b) => a.key.localeCompare(b.key))
 
-  const filteredTransactions = periodTransactions.filter(transaction => {
-    const matchesSearch =
-      `${transaction.vendor} ${transaction.description} ${transaction.category}`
-        .toLowerCase()
-        .includes(search.toLowerCase())
+  const searchTransactions = search.trim()
+    ? transactionSearchResults || []
+    : periodTransactions
+
+  const filteredTransactions = searchTransactions.filter(transaction => {
+    const transactionDate = new Date(`${transaction.date}T00:00:00`)
+    const isInPeriod = period === 'All time'
+      ? true
+      : period === 'Last 3 months' || period === 'This year'
+        ? transactionDate >= periodStart && transactionDate <= new Date()
+        : transactionDate >= periodStart && transactionDate < periodEnd
 
     const matchesCategory =
       category === 'All categories' ||
       transaction.category === category
 
-    return matchesSearch && matchesCategory
+    return isInPeriod && matchesCategory
   })
 
 const navItems = [
@@ -829,7 +909,9 @@ const navItems = [
                     <span className="metric-icon expense-icon">↗</span>
                   </div>
                   <h2>{money(totalExpenses)}</h2>
-                  <p className="metric-note">Ordinary spending</p>
+                  <p className="metric-note investment-summary">
+                    Investments: {money(totalInvestments)}
+                  </p>
                 </article>
 
                 <article className="summary-card balance-card">
@@ -899,8 +981,11 @@ const navItems = [
                       >
                         <div
                           className={`transaction-avatar avatar-${index % 5}`}
+                          title={transaction.category}
                         >
-                          {transaction.vendor.charAt(0).toUpperCase()}
+                          <span aria-hidden="true">
+                            {categoryIcons[transaction.category] || '•'}
+                          </span>
                         </div>
 
                         <div className="recent-details">
@@ -1077,7 +1162,11 @@ const navItems = [
                   <p>
                     Search and filter your activity (
                     {filteredTransactions.length} shown)
+                    {transactionSearchLoading && ' · Searching…'}
                   </p>
+                  {search.trim() && transactionSearchError && (
+                    <p className="error-message">{transactionSearchError}</p>
+                  )}
                 </div>
               </div>
 

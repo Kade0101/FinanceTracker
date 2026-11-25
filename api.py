@@ -38,6 +38,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Apply lightweight schema migrations, including search indexes, when the API
+# starts so existing databases benefit without requiring a CSV re-import.
+create_tables()
+
 
 @app.get("/")
 def home():
@@ -145,11 +149,24 @@ def process_csv_status():
 
 
 @app.get("/transactions")
-def get_transactions():
+def get_transactions(search: str = ""):
     connection = sqlite3.connect("database.db")
     connection.row_factory = sqlite3.Row
 
     try:
+        search = search.strip()
+        where_clause = ""
+        parameters = []
+
+        if search:
+            escaped_search = (
+                search.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            where_clause = "WHERE vendor LIKE ? ESCAPE '\\' COLLATE NOCASE"
+            parameters.append(f"%{escaped_search}%")
+
         cursor = connection.execute("""
             SELECT
                 id,
@@ -163,8 +180,9 @@ def get_transactions():
                 cleaned_description,
                 transaction_type
             FROM TransactionList
+            """ + where_clause + """
             ORDER BY date DESC, id DESC
-        """)
+        """, parameters)
 
         return [
             {
@@ -221,6 +239,10 @@ def get_vendors_for_review():
                 UNION
 
                 SELECT 'Investments'
+
+                UNION
+
+                SELECT 'Fuel'
             )
             ORDER BY category
         """).fetchall()
@@ -266,6 +288,10 @@ def save_vendor_review(request: VendorCategoryUpdateRequest):
                     UNION
 
                     SELECT 'Investments'
+
+                    UNION
+
+                    SELECT 'Fuel'
                 )
             """).fetchall()
         }

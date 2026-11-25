@@ -39,8 +39,12 @@ The default categories are:
 
     Groceries
     Bills
+    Fuel
     Transport
+    Travel
+    Gambling
     Entertainment
+    Nightlife
     Shopping
     Income
     Restaurant Dining

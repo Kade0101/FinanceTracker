@@ -77,6 +77,7 @@ h1 { margin-bottom: 7px; color: var(--ink); font-size: 29px; letter-spacing: -1p
 .summary-card h2 { margin: 18px 0 7px; color: var(--ink); font-size: clamp(26px, 3vw, 36px); font-variant-numeric: tabular-nums; letter-spacing: -1.4px; overflow-wrap: anywhere; }
 .balance-card h2 { color: #f4fbf7; font-size: clamp(30px, 3.3vw, 40px); }
 .metric-note { margin: 0; color: var(--muted); font-size: 11px; }
+.investment-summary { color: #9a6a25; }
 .balance-card .metric-note { color: #9ab6ad; }
 .positive { color: var(--positive) !important; }
 .negative, .amount { color: var(--negative) !important; }
@@ -113,6 +114,8 @@ h1 { margin-bottom: 7px; color: var(--ink); font-size: 29px; letter-spacing: -1p
 .cash-flow-line { fill: none; stroke-width: 2.75; stroke-linecap: round; stroke-linejoin: round; }
 .income-line { stroke: var(--positive); }
 .expense-line { stroke: var(--negative); }
+.investment-line { stroke: #b27a2b; }
+.investment-key { background: #b27a2b; }
 .net-line { stroke-width: 3.25; }
 .cash-flow-data { margin-top: 4px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .cash-flow-data summary { padding-top: 12px; cursor: pointer; color: var(--accent); font-weight: 700; }
@@ -134,7 +137,7 @@ h1 { margin-bottom: 7px; color: var(--ink); font-size: 29px; letter-spacing: -1p
 .recent-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
 .recent-row:first-child { padding-top: 0; }
 .recent-row:last-child { padding-bottom: 0; border-bottom: 0; }
-.transaction-avatar { display: grid; place-items: center; flex-shrink: 0; width: 29px; height: 29px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--muted-strong); background: transparent; font-size: 10px; font-weight: 700; }
+.transaction-avatar { display: grid; place-items: center; flex-shrink: 0; width: 29px; height: 29px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--muted-strong); background: transparent; font-size: 15px; font-weight: 700; }
 .avatar-1, .avatar-2, .avatar-3, .avatar-4 { color: var(--muted-strong); background: transparent; }
 .recent-details { display: grid; gap: 4px; flex: 1; min-width: 0; }
 .recent-details strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }

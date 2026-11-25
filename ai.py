@@ -17,8 +17,12 @@ SEMAPHORE = asyncio.Semaphore(CONCURRENCY_LIMIT)
 CATEGORIES = [
     "Groceries",
     "Bills",
+    "Fuel",
     "Transport",
+    "Travel",
+    "Gambling",
     "Entertainment",
+    "Nightlife",
     "Shopping",
     "Income",
     "Restaurant Dining",
@@ -65,26 +69,46 @@ async def categorise_transaction_async(description):
         "financial category for the transaction.\n\n"
         "Available categories:\n"
         f"{', '.join(CATEGORIES)}\n\n"
+        "Category definitions and exclusions:\n"
+        "- Groceries: supermarkets, grocery stores, and grocery delivery.\n"
+        "- Bills: recurring household, utility, insurance, government, or service bills.\n"
+        "- Fuel: petrol stations, diesel stations, and vehicle fuel purchases.\n"
+        "- Transport: public transport, taxis, rideshare, parking, tolls, and other vehicle costs.\n"
+        "- Travel: flights, accommodation, hotels, travel bookings, and other trip-related costs.\n"
+        "- Gambling: betting, wagering, casinos, lotteries, and sports-betting transactions.\n"
+        "- Entertainment: cinemas, games, streaming, museums, zoos, attractions, sport, and recreational activities.\n"
+        "- Nightlife: bars, pubs, nightclubs, live-music venues, and places primarily visited for evening drinking or dancing.\n"
+        "- Shopping: retail purchases, clothing, electronics, hardware, gifts, and physical goods.\n"
+        "- Restaurant Dining: sit-down meals, restaurants, cafes, and dine-in food venues.\n"
+        "- Fast Food: takeaway, quick-service meals, and drive-through food.\n"
+        "- Income: wages, salary, benefits, refunds, rebates, or other money received.\n"
+        "- Transfer: movement between the user's own accounts or financial products.\n"
+        "- Other: use only when the transaction cannot be confidently assigned elsewhere.\n\n"
         "Classification guidelines:\n"
-        "- Categorise based on the primary business activity.\n"
+        "- Categorise based on the primary business activity or transaction purpose.\n"
         "- Use your knowledge of businesses, including Australian businesses.\n"
         "- Supermarkets and grocery delivery services: Groceries.\n"
-        "- Fuel stations: Transport.\n"
+        "- Fuel stations and petrol stations: Fuel.\n"
         "- Public transport providers: Transport.\n"
         "- Retailers selling camping, fishing, boating and outdoor "
         "recreation equipment: Shopping.\n"
         "- Hardware and home improvement stores: Shopping.\n"
         "- Ticketing platforms and cinemas: Entertainment.\n"
         "- Music and streaming subscriptions: Entertainment.\n"
+        "- Keep Nightlife separate from Entertainment when the primary activity is going out at night.\n"
+        "- Do not use Nightlife for restaurants, cafes, fast food, shops, public transport, fuel, parking,\n"
+        "  cinemas, museums, ticketed attractions, sport, or recreational activities.\n"
+        "- Do not use Entertainment for ordinary retail, transport, restaurant, or nightlife transactions.\n"
         "- Meal kit delivery services: Groceries.\n"
-        "- Cryptocurrency exchanges: Other.\n"
+        "- Cryptocurrency exchanges and investment platforms: Investments.\n"
+        "- Betting, wagering, casino, lottery, and sports-betting transactions: Gambling.\n"
         "- Do not classify a business as Other if its primary activity clearly fits an available category.\n"
         "Category selection rules:\n"
         "- Choose the closest matching category, even if the business has multiple activities.\n"
         "- Shopping includes specialist retailers selling physical goods.\n"
-        "- BCF is a retailer of boating, camping and fishing equipment: Shopping.\n"
-        "- RSL clubs should generally be classified as Restaurant Dining "
-        "unless the transaction clearly relates to entertainment or another activity.\n"
+        "- Clubs and venues with mixed activities should be classified by the most likely purpose of the transaction.\n"
+        "- If a venue could be either a restaurant or nightlife venue and the description gives no useful clue,\n"
+        "  prefer Restaurant Dining rather than guessing Nightlife.\n"
         "- Never use Other simply because a business has multiple activities.\n"
         "- Do not invent business information.\n"
         "- If you cannot confidently identify the business, return Other.\n"

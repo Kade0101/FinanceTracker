@@ -34,6 +34,7 @@ from vendor_alias_manager import (
 import time
 import sys
 import asyncio
+import re
 
 
 # Ensure console output supports UTF-8.
@@ -50,6 +51,59 @@ if hasattr(sys.stderr, "reconfigure"):
     )
 
 eligible_for_review = []
+
+
+DESCRIPTION_CATEGORY_RULES = (
+    ("Transfer", ("internal transfer", "everyday round up", "round up")),
+    ("Investments", ("investment", "investing")),
+    ("Travel", (
+        "travel", "flight", "airfare", "hotel", "accommodation",
+        "holiday", "travel booking", "airport",
+    )),
+    ("Gambling", (
+        "gambling", "betting", "wager", "casino", "lottery",
+        "sportsbet", "sports bet", "sports betting",
+    )),
+    ("Fuel", ("fuel", "petrol", "diesel", "gas station", "service station")),
+    ("Transport", (
+        "uber", "rideshare", "taxi", "parking",
+        "toll", "public transport", "train", "tram", "bus",
+    )),
+    ("Groceries", ("grocery", "groceries", "supermarket")),
+    ("Fast Food", (
+        "fast food", "takeaway", "take away", "drive through", "drive-through",
+    )),
+    ("Restaurant Dining", (
+        "restaurant", "cafe", "coffee", "sushi", "pizza", "burger",
+        "fish and chips", "dinner", "lunch", "breakfast",
+    )),
+    ("Shopping", (
+        "shopping", "clothes", "shirt", "skirt", "shoes", "hardware",
+        "present", "gift", "camera", "electronics",
+    )),
+    ("Entertainment", (
+        "movie", "cinema", "ticket", "game", "gaming", "streaming",
+        "bowling", "golf", "climb", "camping", "zoo", "museum",
+    )),
+    ("Nightlife", (
+        "bar", "pub", "club", "nightclub", "cocktail", "drinks",
+        "alcohol", "beer", "afterparty", "after party",
+    )),
+)
+
+
+def infer_category_from_description(description):
+    """Return a high-confidence category from explicit description wording."""
+    normalised = re.sub(r"\s+", " ", description.casefold()).strip()
+
+    for category, keywords in DESCRIPTION_CATEGORY_RULES:
+        if any(
+            re.search(rf"\b{re.escape(keyword)}\b", normalised)
+            for keyword in keywords
+        ):
+            return category
+
+    return None
 
 def main():
     create_tables()
@@ -111,8 +165,15 @@ async def assign_category_to_vendor(time_period=None, progress_callback=None):
         canonical_id = None
         canonical_vendor = None
 
-        # Handle internal transfers first.
-        if "internal transfer" in description.casefold():
+        # Apply only explicit, high-confidence description rules first.
+        description_category = infer_category_from_description(description)
+
+        if description_category is not None:
+
+            category = description_category
+
+        # Handle internal transfers next.
+        elif "internal transfer" in description.casefold():
 
             category = "Transfer"
 
@@ -179,7 +240,6 @@ async def assign_category_to_vendor(time_period=None, progress_callback=None):
                     canonical_vendor,
                     category
                 )
-
             else:
 
                 # Reuse the existing canonical ID and category.
