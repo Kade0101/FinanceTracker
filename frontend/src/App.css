@@ -88,20 +88,37 @@ h1 { margin-bottom: 7px; color: var(--ink); font-size: 29px; letter-spacing: -1p
 .panel-heading p { margin: 0; color: var(--muted); font-size: 11px; }
 .panel-menu { display: none; }
 .cash-flow-panel, .activity-panel { min-height: 324px; }
-.cash-flow-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: -3px 0 12px; color: var(--muted); font-size: 10px; }
+.cash-flow-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -3px 0 12px; }
+.chart-interval-control { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.chart-interval-control select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: var(--surface); font-size: 10px; font-weight: 700; }
+.chart-outlier-marker path { fill: var(--negative); }
+.chart-outlier-marker.chart-outlier-positive path { fill: var(--positive); }
+.chart-outlier-summary { position: relative; height: 42px; margin: 0; }
+.chart-outlier-callout { position: absolute; transform: translateX(-50%); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.chart-outlier-positive { color: var(--positive); }
+.chart-outlier-negative { color: var(--negative); }
+.chart-mode-toggle { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
+.chart-mode-toggle button { padding: 6px 9px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.chart-mode-toggle button:hover { color: var(--ink); }
+.chart-mode-toggle button.active { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px rgba(27, 37, 43, .08); }
+.cash-flow-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 0 auto; color: var(--muted); font-size: 10px; }
 .cash-flow-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .series-key { width: 18px; height: 2px; background: var(--accent); }
-.income-key { background: #2f6f79; }
-.expense-key { background: #a96565; }
+.income-key { background: var(--positive); }
+.expense-key { background: var(--negative); }
 .net-key { background: #1b252b; }
-.cash-flow-chart-scroll { width: 100%; overflow-x: auto; padding-bottom: 7px; scrollbar-color: #a9b9be transparent; scrollbar-width: thin; }
+.cash-flow-chart-scroll { width: 100%; overflow-x: auto; padding-bottom: 7px; scrollbar-color: #8fa5ab transparent; scrollbar-width: auto; }
+.cash-flow-chart-scroll::-webkit-scrollbar { height: 10px; }
+.cash-flow-chart-scroll::-webkit-scrollbar-track { background: transparent; }
+.cash-flow-chart-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: #8fa5ab; }
+.cash-flow-chart-scroll::-webkit-scrollbar-thumb:hover { background: #6f8991; }
 .cash-flow-chart { display: block; max-width: none; min-width: 0; height: 250px; overflow: visible; }
 .chart-grid-line { stroke: #e5eaec; stroke-width: 1; }
 .chart-zero-line { stroke: #aebcc1; stroke-width: 1; }
 .chart-axis-label, .chart-month-label { fill: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 10px; }
 .cash-flow-line { fill: none; stroke-width: 2.75; stroke-linecap: round; stroke-linejoin: round; }
-.income-line { stroke: #2f6f79; }
-.expense-line { stroke: #a96565; stroke-dasharray: 7 4; }
+.income-line { stroke: var(--positive); }
+.expense-line { stroke: var(--negative); }
 .net-line { stroke-width: 3.25; }
 .cash-flow-data { margin-top: 4px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .cash-flow-data summary { padding-top: 12px; cursor: pointer; color: var(--accent); font-weight: 700; }
