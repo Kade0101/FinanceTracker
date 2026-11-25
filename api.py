@@ -68,6 +68,9 @@ def classify_cash_flow(transaction):
         return "internal_transfer"
 
     category = (transaction["category"] or "").casefold()
+    if category in ("transfer", "transfers"):
+        return "internal_transfer"
+
     if category in ("investment", "investments"):
         return "investment"
 
@@ -213,6 +216,10 @@ def get_vendors_for_review():
 
                 UNION
 
+                SELECT 'Transfer'
+
+                UNION
+
                 SELECT 'Investments'
             )
             ORDER BY category
@@ -251,6 +258,10 @@ def save_vendor_review(request: VendorCategoryUpdateRequest):
                     WHERE category IS NOT NULL
                       AND category != ''
                       AND category != 'Other'
+
+                    UNION
+
+                    SELECT 'Transfer'
 
                     UNION
 
