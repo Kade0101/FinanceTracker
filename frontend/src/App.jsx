@@ -19,6 +19,259 @@ const categoryColors = [
   '#8dcf80',
 ]
 
+const compactMoney = value =>
+  new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+
+const roundedAxisMoney = value => {
+  const roundedValue = Math.round(value / 500) * 500
+  return compactMoney(Object.is(roundedValue, -0) ? 0 : roundedValue)
+}
+
+function SpendingDonut({ spending, totalSpending }) {
+  if (spending.length === 0) {
+    return <p className="empty-state">No expenses for this period.</p>
+  }
+
+  return (
+    <div className="spending-layout">
+      <div
+        className="donut-chart"
+        style={{
+          background: `conic-gradient(${spending
+            .map((item, index) => {
+              const start = spending
+                .slice(0, index)
+                .reduce(
+                  (sum, previous) => sum + previous.amount,
+                  0
+                ) / totalSpending * 100
+
+              const end = start + item.amount / totalSpending * 100
+              return `${item.color} ${start}% ${end}%`
+            })
+            .join(', ')})`,
+        }}
+      >
+        <div className="donut-hole">
+          <span>Total spent</span>
+          <strong>{money(totalSpending)}</strong>
+        </div>
+      </div>
+
+      <div className="legend">
+        {spending.map(item => (
+          <div className="legend-row" key={item.name}>
+            <span
+              className="legend-dot"
+              style={{ background: item.color }}
+            />
+            <span className="legend-name">{item.name}</span>
+            <strong>{money(item.amount)}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CashFlowGraph({ data, interval, availableIntervals, onIntervalChange }) {
+  const [chartMode, setChartMode] = useState('income-expenses')
+
+  if (data.length === 0) {
+    return <p className="empty-state">No cash flow data for this period.</p>
+  }
+
+  const showsNet = chartMode === 'net'
+  const chartHeight = 250
+  const chartWidth = Math.max(760, data.length * 68)
+  const padding = { top: 18, right: 22, bottom: 34, left: 54 }
+  const plotWidth = chartWidth - padding.left - padding.right
+  const plotHeight = chartHeight - padding.top - padding.bottom
+  const values = data.flatMap(item =>
+    showsNet ? [item.net] : [item.income, item.expenses]
+  )
+  const maxValue = Math.max(0, ...values)
+  const minValue = Math.min(0, ...values)
+  const valueRange = maxValue - minValue || 1
+  const xFor = index =>
+    padding.left + (data.length === 1
+      ? plotWidth / 2
+      : index / (data.length - 1) * plotWidth)
+  const yFor = value =>
+    padding.top + (maxValue - value) / valueRange * plotHeight
+  const pointsFor = key =>
+    data.map((item, index) => `${xFor(index)},${yFor(item[key])}`).join(' ')
+  const gridValues = [...new Set([
+    ...Array.from({ length: 5 }, (_, index) =>
+      maxValue - valueRange * index / 4
+    ),
+    0,
+  ])].sort((a, b) => b - a)
+  const zeroPercent = `${((yFor(0) - padding.top) / plotHeight) * 100}%`
+
+  return (
+    <>
+      <div className="cash-flow-controls">
+        <label className="chart-interval-control">
+          <span>Group by</span>
+          <select
+            value={interval}
+            onChange={event => onIntervalChange(event.target.value)}
+            aria-label="Group chart data by"
+          >
+            {availableIntervals.map(option => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="chart-mode-toggle" role="group" aria-label="Chart view">
+          <button
+            className={!showsNet ? 'active' : ''}
+            type="button"
+            aria-pressed={!showsNet}
+            onClick={() => setChartMode('income-expenses')}
+          >
+            Income &amp; expenses
+          </button>
+          <button
+            className={showsNet ? 'active' : ''}
+            type="button"
+            aria-pressed={showsNet}
+            onClick={() => setChartMode('net')}
+          >
+            Net cash flow
+          </button>
+        </div>
+
+        <div className="cash-flow-legend" aria-label={`${showsNet ? 'Net cash flow' : 'Income and expenses'} series`}>
+          {showsNet ? (
+            <span><i className="series-key net-key" />Net cash flow</span>
+          ) : (
+            <>
+              <span><i className="series-key income-key" />Income</span>
+              <span><i className="series-key expense-key" />Expenses</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="cash-flow-chart-scroll">
+        <svg
+          className="cash-flow-chart"
+          style={{ width: `${chartWidth}px` }}
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          role="img"
+          aria-label={showsNet ? 'Monthly net cash flow' : 'Monthly income and expenses'}
+        >
+          <title>{showsNet ? 'Monthly net cash flow' : 'Monthly income and expenses'}</title>
+
+          <defs>
+            <linearGradient
+              id="net-flow-gradient"
+              x1="0"
+              y1={padding.top}
+              x2="0"
+              y2={chartHeight - padding.bottom}
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor="#22745f" />
+              <stop offset={zeroPercent} stopColor="#22745f" />
+              <stop offset={zeroPercent} stopColor="#b45454" />
+              <stop offset="100%" stopColor="#b45454" />
+            </linearGradient>
+          </defs>
+
+          {gridValues.map(value => (
+            <g key={value}>
+              <line
+                className={value === 0 ? 'chart-zero-line' : 'chart-grid-line'}
+                x1={padding.left}
+                x2={chartWidth - padding.right}
+                y1={yFor(value)}
+                y2={yFor(value)}
+              />
+              {value !== 0 && (
+                <text
+                  className="chart-axis-label"
+                  x={padding.left - 10}
+                  y={yFor(value) + 4}
+                  textAnchor="end"
+                >
+                  {roundedAxisMoney(value)}
+                </text>
+              )}
+            </g>
+          ))}
+
+          {!showsNet && (
+            <>
+              <polyline className="cash-flow-line income-line" points={pointsFor('income')} />
+              <polyline className="cash-flow-line expense-line" points={pointsFor('expenses')} />
+            </>
+          )}
+          {showsNet && (
+            <polyline
+              className="cash-flow-line net-line"
+              style={{ stroke: 'url(#net-flow-gradient)' }}
+              points={pointsFor('net')}
+            />
+          )}
+
+          {data.map((item, index) => (
+            <text
+              className="chart-month-label"
+              key={item.key}
+              x={xFor(index)}
+              y={chartHeight - 10}
+              textAnchor="middle"
+            >
+              {item.label}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      <details className="cash-flow-data">
+        <summary>View monthly cash flow data</summary>
+        <div className="cash-flow-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th className="right-align">Income</th>
+                <th className="right-align">Expenses</th>
+                <th className="right-align">Investments</th>
+                <th className="right-align">Net cash flow</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map(item => (
+                <tr key={item.key}>
+                  <td>{item.label}</td>
+                  <td className="right-align">{money(item.income)}</td>
+                  <td className="right-align">{money(item.expenses)}</td>
+                  <td className="right-align">{money(item.investments)}</td>
+                  <td className={`right-align ${item.net >= 0 ? 'positive' : 'negative'}`}>
+                    {money(item.net)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </>
+  )
+}
+
 function App() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,6 +281,7 @@ function App() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All categories')
   const [period, setPeriod] = useState('This month')
+  const [cashFlowInterval, setCashFlowInterval] = useState('month')
 
   const [processing, setProcessing] = useState(false)
   const [processResult, setProcessResult] = useState('')
@@ -257,10 +511,32 @@ const periodTransactions = transactions.filter(transaction => {
     transactionDate < periodEnd
 })
 
-  const isTransfer = transaction => {
-    const categoryName = (transaction.category || '').toLowerCase()
-    return categoryName === 'transfer' || categoryName === 'internal transfer'
-  }
+  const transactionDates = periodTransactions
+    .map(transaction => new Date(`${transaction.date}T00:00:00`).getTime())
+    .filter(Number.isFinite)
+  const selectedRangeDays = period === 'All time'
+    ? transactionDates.length > 1
+      ? (Math.max(...transactionDates) - Math.min(...transactionDates)) /
+        (1000 * 60 * 60 * 24) + 1
+      : 0
+    : period === 'This month' || period === 'Last month'
+      ? 31
+      : period === 'Last 3 months'
+        ? 92
+        : 365
+  const availableCashFlowIntervals = [
+    ...(selectedRangeDays <= 365 ? ['day'] : []),
+    'week',
+    ...(selectedRangeDays >= 60 ? ['month'] : []),
+  ]
+  const selectedCashFlowInterval = availableCashFlowIntervals.includes(
+    cashFlowInterval
+  )
+    ? cashFlowInterval
+    : availableCashFlowIntervals[0]
+
+  const isTransfer = transaction =>
+    transaction.cash_flow_type === 'internal_transfer'
 
   // Transfers should remain in the database for lookups, but not count
   // towards income/expense totals or spending breakdowns.
@@ -269,11 +545,18 @@ const periodTransactions = transactions.filter(transaction => {
   )
 
   const totalIncome = summaryTransactions
-    .filter(transaction => transaction.amount > 0)
+    .filter(transaction => transaction.cash_flow_type === 'income')
     .reduce((sum, transaction) => sum + transaction.amount, 0)
 
   const totalExpenses = summaryTransactions
-    .filter(transaction => transaction.amount < 0)
+    .filter(transaction => transaction.cash_flow_type === 'expense')
+    .reduce(
+      (sum, transaction) => sum + Math.abs(transaction.amount),
+      0
+    )
+
+  const totalInvestments = summaryTransactions
+    .filter(transaction => transaction.cash_flow_type === 'investment')
     .reduce(
       (sum, transaction) => sum + Math.abs(transaction.amount),
       0
@@ -281,7 +564,7 @@ const periodTransactions = transactions.filter(transaction => {
 
   const spending = Object.values(
     summaryTransactions.reduce((groups, transaction) => {
-      if (transaction.amount >= 0) return groups
+      if (transaction.cash_flow_type !== 'expense') return groups
 
       const name = transaction.category
 
@@ -306,6 +589,64 @@ const periodTransactions = transactions.filter(transaction => {
     (sum, item) => sum + item.amount,
     0
   )
+
+  const cashFlowData = Object.values(
+    summaryTransactions.reduce((groups, transaction) => {
+      const transactionDate = new Date(`${transaction.date}T00:00:00`)
+      const periodDate = new Date(transactionDate)
+
+      if (selectedCashFlowInterval === 'week') {
+        const dayOfWeek = periodDate.getDay()
+        const daysSinceMonday = (dayOfWeek + 6) % 7
+        periodDate.setDate(periodDate.getDate() - daysSinceMonday)
+      } else if (selectedCashFlowInterval === 'month') {
+        periodDate.setDate(1)
+      }
+
+      const key = `${periodDate.getFullYear()}-${String(
+        periodDate.getMonth() + 1
+      ).padStart(2, '0')}-${String(periodDate.getDate()).padStart(2, '0')}`
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label:
+            selectedCashFlowInterval === 'day'
+              ? transactionDate.toLocaleDateString('en-AU', {
+                day: 'numeric',
+                month: 'short',
+              })
+              : selectedCashFlowInterval === 'week'
+                ? periodDate.toLocaleDateString('en-AU', {
+                  day: 'numeric',
+                  month: 'short',
+                })
+                : periodDate.toLocaleDateString('en-AU', {
+                  month: 'short',
+                  year: '2-digit',
+                }),
+          income: 0,
+          expenses: 0,
+          investments: 0,
+          net: 0,
+        }
+      }
+
+      if (transaction.cash_flow_type === 'income') {
+        groups[key].income += transaction.amount
+      } else if (transaction.cash_flow_type === 'expense') {
+        groups[key].expenses += Math.abs(transaction.amount)
+      } else if (transaction.cash_flow_type === 'investment') {
+        groups[key].investments += Math.abs(transaction.amount)
+      }
+
+      groups[key].net =
+        groups[key].income -
+        groups[key].expenses -
+        groups[key].investments
+      return groups
+    }, {})
+  ).sort((a, b) => a.key.localeCompare(b.key))
 
   const filteredTransactions = periodTransactions.filter(transaction => {
     const matchesSearch =
@@ -488,7 +829,7 @@ const navItems = [
                     <span className="metric-icon expense-icon">↗</span>
                   </div>
                   <h2>{money(totalExpenses)}</h2>
-                  <p className="metric-note">Money spent</p>
+                  <p className="metric-note">Ordinary spending</p>
                 </article>
 
                 <article className="summary-card balance-card">
@@ -498,82 +839,42 @@ const navItems = [
                   </div>
                   <h2
                     className={
-                      totalIncome - totalExpenses >= 0
+                      totalIncome - totalExpenses - totalInvestments >= 0
                         ? 'positive'
                         : 'negative'
                     }
                   >
-                    {money(totalIncome - totalExpenses)}
+                    {money(
+                      totalIncome - totalExpenses - totalInvestments
+                    )}
                   </h2>
                   <p className="metric-note">
-                    Income minus expenses
+                    After expenses and investments
                   </p>
                 </article>
               </section>
 
               <section className="content-grid">
-                <article className="panel spending-panel">
+                <article className="panel cash-flow-panel">
                   <div className="panel-heading">
                     <div>
-                      <h3>Spending breakdown</h3>
-                      <p>Where your money goes</p>
+                      <h3>
+                        {selectedCashFlowInterval === 'day'
+                          ? 'Daily cash flow'
+                          : selectedCashFlowInterval === 'week'
+                            ? 'Weekly cash flow'
+                            : 'Monthly cash flow'}
+                      </h3>
+                      <p>Income, spending, investments and net movement</p>
                     </div>
-                    <span className="panel-menu">···</span>
                   </div>
 
-                  {spending.length === 0 ? (
-                    <p className="empty-state">
-                      No expenses for this period.
-                    </p>
-                  ) : (
-                    <div className="spending-layout">
-                      <div
-                        className="donut-chart"
-                        style={{
-                          background: `conic-gradient(${spending
-                            .map((item, index) => {
-                              const start = spending
-                                .slice(0, index)
-                                .reduce(
-                                  (sum, previous) =>
-                                    sum + previous.amount,
-                                  0
-                                ) / totalSpending * 100
-
-                              const end =
-                                start +
-                                item.amount / totalSpending * 100
-
-                              return `${item.color} ${start}% ${end}%`
-                            })
-                            .join(', ')})`,
-                        }}
-                      >
-                        <div className="donut-hole">
-                          <span>Total spent</span>
-                          <strong>{money(totalSpending)}</strong>
-                        </div>
-                      </div>
-
-                      <div className="legend">
-                        {spending.map(item => (
-                          <div
-                            className="legend-row"
-                            key={item.name}
-                          >
-                            <span
-                              className="legend-dot"
-                              style={{ background: item.color }}
-                            />
-                            <span className="legend-name">
-                              {item.name}
-                            </span>
-                            <strong>{money(item.amount)}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <CashFlowGraph
+                    data={cashFlowData}
+                    interval={selectedCashFlowInterval}
+                    availableIntervals={availableCashFlowIntervals}
+                    onIntervalChange={setCashFlowInterval}
+                  />
                 </article>
 
                 <article className="panel activity-panel">
@@ -604,7 +905,7 @@ const navItems = [
 
                         <div className="recent-details">
                           <strong>{transaction.vendor}</strong>
-                          <span>{transaction.category}</span>
+                          <span>{transaction.date} · {transaction.category}</span>
                         </div>
 
                         <strong
@@ -639,6 +940,11 @@ const navItems = [
                   <p>Your spending for the selected period</p>
                 </div>
               </div>
+
+              <SpendingDonut
+                spending={spending}
+                totalSpending={totalSpending}
+              />
 
               {spending.map(item => (
                 <div className="category-item" key={item.name}>
@@ -677,7 +983,7 @@ const navItems = [
       <div>
         <h3>Vendors requiring review</h3>
         <p>
-          Assign categories to vendors currently classified as Other.
+          Review vendors currently classified as Other or Transfer.
         </p>
       </div>
       <span className="review-count">
