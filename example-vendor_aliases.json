@@ -8,45 +8,135 @@
         "COLES BRISBANE STORE",
         "COLES SAMPLE ONLINE ORDER"
     ],
-    "ALDI": ["ALDI STORES BRISBANE"],
-    "IGA": ["IGA SAMPLE MARKET"],
-    "BP": ["BP SAMPLE SERVICE CENTRE"],
-    "Ampol": ["AMPOL SAMPLE SERVICE CENTRE"],
-    "7-Eleven": ["7-ELEVEN SAMPLE STORE"],
-    "Kmart": ["KMART SAMPLE SHOPPING CENTRE"],
-    "Bunnings": ["BUNNINGS SAMPLE WAREHOUSE"],
-    "Chemist Warehouse": ["CHEMIST WAREHOUSE SAMPLE"],
-    "McDonald's": ["MC DONALDS SAMPLE RESTAURANT", "MCDONALDS APP SAMPLE"],
-    "KFC": ["KFC SAMPLE RESTAURANT"],
-    "Guzman y Gomez": ["Guzman y Gomez SAMPLE"],
-    "Hungry Jack's": ["HUNGRY JACKS SAMPLE"],
-    "Uber": ["UBER *TRIP SAMPLE BRISBANE"],
-    "Translink": ["TRANSLINK GO CARD SAMPLE"],
-    "Netflix": ["NETFLIX.COM SAMPLE"],
-    "Spotify": ["SPOTIFY SAMPLE SUBSCRIPTION"],
-    "Apple": ["APPLE.COM/BILL SAMPLE"],
-    "Microsoft": ["Microsoft*Subscription SAMPLE"],
-    "Amazon Prime": ["AMZNPRIMEA SAMPLE"],
-    "JB Hi-Fi": ["JB HI-FI SAMPLE STORE"],
-    "Officeworks": ["OFFICEWORKS SAMPLE STORE"],
-    "Dan Murphy's": ["DAN MURPHYS SAMPLE"],
-    "BWS": ["BWS SAMPLE STORE"],
-    "Rebel": ["REBEL SAMPLE STORE"],
-    "Origin Energy": ["ORIGIN ENERGY SAMPLE BILL"],
-    "AGL": ["AGL SAMPLE ENERGY BILL"],
-    "Telstra": ["TELSTRA SAMPLE BILL"],
-    "Optus": ["OPTUS SAMPLE BILL"],
-    "Medibank": ["MEDIBANK SAMPLE PREMIUM"],
-    "Bupa": ["BUPA SAMPLE PREMIUM"],
-    "PayPal": ["PAYPAL *SAMPLE PURCHASE"],
-    "Australia Post": ["AUSTRALIA POST SAMPLE PARCEL"],
-    "DoorDash": ["DOORDASH SAMPLE ORDER"],
-    "Uber Eats": ["UBER EATS SAMPLE ORDER"],
-    "IKEA": ["IKEA SAMPLE BRISBANE"],
-    "Costco": ["COSTCO WHOLESALE SAMPLE"],
-    "Qantas": ["QANTAS SAMPLE BOOKING"],
-    "Virgin Australia": ["VIRGIN AUSTRALIA SAMPLE"],
-    "Example Payroll": ["EXAMPLE PAYROLL PTY LTD SALARY"],
-    "Example Savings Transfer": ["TRANSFER FROM EXAMPLE SAVINGS", "TRANSFER TO EXAMPLE SAVINGS"],
-    "Example Tax Refund": ["EXAMPLE TAX REFUND"]
+    "ALDI": [
+        "ALDI STORES BRISBANE"
+    ],
+    "IGA": [
+        "IGA SAMPLE MARKET"
+    ],
+    "BP": [
+        "BP SAMPLE SERVICE CENTRE"
+    ],
+    "Ampol": [
+        "AMPOL SAMPLE SERVICE CENTRE"
+    ],
+    "7-Eleven": [
+        "7-ELEVEN SAMPLE STORE"
+    ],
+    "Kmart": [
+        "KMART SAMPLE SHOPPING CENTRE"
+    ],
+    "Bunnings": [
+        "BUNNINGS SAMPLE WAREHOUSE"
+    ],
+    "Chemist Warehouse": [
+        "CHEMIST WAREHOUSE SAMPLE"
+    ],
+    "McDonald's": [
+        "MC DONALDS SAMPLE RESTAURANT",
+        "MCDONALDS APP SAMPLE"
+    ],
+    "KFC": [
+        "KFC SAMPLE RESTAURANT"
+    ],
+    "Guzman y Gomez": [
+        "Guzman y Gomez SAMPLE"
+    ],
+    "Hungry Jack's": [
+        "HUNGRY JACKS SAMPLE"
+    ],
+    "Uber": [
+        "UBER *TRIP SAMPLE BRISBANE"
+    ],
+    "Translink": [
+        "TRANSLINK GO CARD SAMPLE"
+    ],
+    "Netflix": [
+        "NETFLIX.COM SAMPLE"
+    ],
+    "Spotify": [
+        "SPOTIFY SAMPLE SUBSCRIPTION"
+    ],
+    "Apple": [
+        "APPLE.COM/BILL SAMPLE"
+    ],
+    "Microsoft": [
+        "Microsoft*Subscription SAMPLE"
+    ],
+    "Amazon Prime": [
+        "AMZNPRIMEA SAMPLE"
+    ],
+    "JB Hi-Fi": [
+        "JB HI-FI SAMPLE STORE"
+    ],
+    "Officeworks": [
+        "OFFICEWORKS SAMPLE STORE"
+    ],
+    "Dan Murphy's": [
+        "DAN MURPHYS SAMPLE"
+    ],
+    "BWS": [
+        "BWS SAMPLE STORE"
+    ],
+    "Rebel": [
+        "REBEL SAMPLE STORE"
+    ],
+    "Origin Energy": [
+        "ORIGIN ENERGY SAMPLE BILL"
+    ],
+    "AGL": [
+        "AGL SAMPLE ENERGY BILL"
+    ],
+    "Telstra": [
+        "TELSTRA SAMPLE BILL"
+    ],
+    "Optus": [
+        "OPTUS SAMPLE BILL"
+    ],
+    "Medibank": [
+        "MEDIBANK SAMPLE PREMIUM"
+    ],
+    "Bupa": [
+        "BUPA SAMPLE PREMIUM"
+    ],
+    "PayPal": [
+        "PAYPAL *SAMPLE PURCHASE"
+    ],
+    "Australia Post": [
+        "AUSTRALIA POST SAMPLE PARCEL"
+    ],
+    "DoorDash": [
+        "DOORDASH SAMPLE ORDER"
+    ],
+    "Uber Eats": [
+        "UBER EATS SAMPLE ORDER"
+    ],
+    "IKEA": [
+        "IKEA SAMPLE BRISBANE"
+    ],
+    "Costco": [
+        "COSTCO WHOLESALE SAMPLE"
+    ],
+    "Qantas": [
+        "QANTAS SAMPLE BOOKING"
+    ],
+    "Virgin Australia": [
+        "VIRGIN AUSTRALIA SAMPLE"
+    ],
+    "Example Payroll": [
+        "EXAMPLE PAYROLL PTY LTD SALARY"
+    ],
+    "Example Savings Transfer": [
+        "TRANSFER FROM EXAMPLE SAVINGS",
+        "TRANSFER TO EXAMPLE SAVINGS"
+    ],
+    "Example Tax Refund": [
+        "EXAMPLE TAX REFUND"
+    ],
+    "BIG W SAMPLE STORE": [
+        "BIG W SAMPLE STORE 222"
+    ],
+    "TARGET SAMPLE STORE": [
+        "TARGET SAMPLE STORE 323"
+    ]
 }

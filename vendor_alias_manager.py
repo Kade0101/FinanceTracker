@@ -164,7 +164,7 @@ def get_vendor_canonical(vendor):
     # Otherwise, check for an alias at the beginning of the vendor.
     pattern, alias_lookup = _get_alias_pattern()
 
-    if pattern is not None:
+    if pattern is not None and alias_lookup is not None:
         match = pattern.match(vendor)
 
         if match:

@@ -93,7 +93,11 @@ TRANSACTION_TYPE_RULES = [
 ]
 
 
-def classify_transaction(description, credit=0, debit=0):
+def classify_transaction(
+    description: str,
+    credit: float = 0.0,
+    debit: float = 0.0,
+) -> str:
     """Return a transaction type based on known description patterns."""
     text = (description or "").upper()
 
