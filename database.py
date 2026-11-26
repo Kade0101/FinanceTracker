@@ -44,6 +44,11 @@ def create_tables():
     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_transaction
     ON TransactionList (date, description, credit, debit, balance)
 """)
+
+    connection.execute("""
+    CREATE INDEX IF NOT EXISTS idx_transaction_vendor
+    ON TransactionList (vendor)
+    """)
     
     # Add the columns to existing databases if they are missing
     existing_columns = {
@@ -128,7 +133,6 @@ def populate_transactions(transactions):
         "imported": imported,
         "duplicates_skipped": len(transactions) - imported,
     }
-
 
 
 def update_transaction_details(transactions):
