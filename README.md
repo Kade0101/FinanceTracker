@@ -50,6 +50,51 @@ Download the model used by the project:
 ollama pull qwen3:4b-instruct
 ```
 
+## Testing with the example data
+
+The repository includes fake data so it can be tested without using anyone's real bank information.
+
+From a clean clone, run these commands in PowerShell:
+
+```powershell
+git clone https://github.com/Kade0101/FinanceTracker.git
+cd FinanceTracker
+
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install ollama
+
+cd frontend
+npm install
+cd ..
+
+Copy-Item example-TransactionList.csv TransactionList.csv
+Copy-Item example-vendor_aliases.json vendor_aliases.json
+Copy-Item example-known_payees.json known_payees.json
+Set-Content unknown_vendors.json -Value "[]"
+```
+
+The application uses the normal local filenames shown below. The `example-*` files are only safe templates:
+
+```text
+example-TransactionList.csv  ->  TransactionList.csv
+example-vendor_aliases.json  ->  vendor_aliases.json
+example-known_payees.json    ->  known_payees.json
+```
+
+If `database.db` already exists from an earlier run, move it out of the way before testing so the sample rows are not treated as duplicates:
+
+```powershell
+if (Test-Path database.db) {
+    Move-Item database.db database-before-example-test.db
+}
+```
+
+The example CSV contains 53 synthetic transactions. On the first run, the dashboard should report approximately 53 imported and 0 duplicates. A second run will correctly report 53 duplicates because those rows are already in the database.
+
+When testing your own data later, keep the same application filenames and replace the local files with your own ignored files. Do not edit the Python paths or commit those files.
+
 ### Frontend
 
 ```powershell
